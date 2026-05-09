@@ -1,6 +1,5 @@
 import os
 import tempfile
-from src.tools.common_tools import enhance_description_with_llm
 from src.rag.retriever_setup import retriever_chain
 
 from fastapi import UploadFile, File, HTTPException
@@ -46,17 +45,7 @@ def document_loader(description: str, file: UploadFile = File(...)):
         doc.metadata["description"] = description
         doc.metadata["source"] = filename
 
-    # # Enhance description using LLM
-    # description_llm = enhance_description_with_llm(description)
-
-    # # Save enhanced description
-    # with open("description.txt", "w", encoding="utf-8") as f:
-    #     f.write(description_llm)
-
-    # with open("description.txt", "r", encoding="utf-8") as f:
-    #     print("Document description from storage:")
-    #     print(f.read())
-
+   
     # Split documents into chunks
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
