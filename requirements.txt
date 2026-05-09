@@ -1,0 +1,12 @@
+langchain
+langchain-core
+langchain-community
+pypdf
+pymupdf
+fastapi
+uvicorn
+python-multipart
+langchain_openai
+faiss-cpu
+pymongo
+motor

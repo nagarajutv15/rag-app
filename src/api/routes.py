@@ -1,0 +1,100 @@
+"""
+API routes for RAG operations.
+"""
+
+from fastapi import APIRouter, UploadFile, File, Header
+from langchain_core.messages import HumanMessage, AIMessage
+from src.rag.document_upload import document_loader
+
+from src.rag.retriever_setup import get_retriever
+from src.llms.llm import llm
+from src.models.query_request import QueryRequest
+
+from src.models.query_request import QueryRequest
+
+
+router = APIRouter()
+
+@router.post("/rag/query")
+async def rag_query(req: QueryRequest):
+
+    retriever = get_retriever()
+
+    if retriever is None:
+        return {"answer": "No documents uploaded yet"}
+
+    docs = retriever.invoke(req.query)
+
+    if not docs:
+        return {"answer": "No relevant information found in documents"}
+
+    context = "\n\n".join([doc.page_content for doc in docs])
+
+    prompt = f"""
+    You are a helpful assistant.
+
+    Answer ONLY using the context below.
+    If the answer is not in the context, say:
+    "I don't know based on the provided documents."
+
+    Context:
+    {context}
+
+    Question:
+    {req.query}
+    """
+
+    response = llm.invoke(prompt)
+
+    answer = response.content if hasattr(response, "content") else str(response)
+
+    return {
+        "answer": answer,
+        "chunks_used": len(docs)
+    }
+
+# @router.post("/rag/query")
+# async def rag_query(req: QueryRequest):
+#     """
+#     Process a RAG query and return the result.
+
+#     Args:
+#         req: The query request containing query text and session_id.
+
+#     Returns:
+#         The generated response from the RAG pipeline.
+#     """
+#     #chat_history=ChatInMemoryHistory.get_session_history(req.token)
+#     chat_history = ChatHistory.get_session_history(req.session_id)
+#     await chat_history.add_message(HumanMessage(content=req.query))
+
+#     # Fetch full history
+#     messages = await chat_history.get_messages()
+#     result = builder.invoke({
+#         "messages": messages
+#     })
+#     output_text = result["messages"][-1].content
+
+#     # Save assistant message
+#     await chat_history.add_message(AIMessage(content=output_text))
+
+#     return {"result": result["messages"][-1]}
+
+
+@router.post("/rag/documents/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    description: str = Header(..., alias="X-Description")
+):
+    """
+    Upload a document for RAG processing.
+
+    Args:
+        file: The file to upload (PDF or TXT).
+        description: Document description provided via header.
+
+    Returns:
+        Upload status.
+    """
+    status_upload = document_loader(description, file)
+    return {"status": status_upload}
