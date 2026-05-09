@@ -1,12 +1,31 @@
-langchain
-langchain-core
-langchain-community
-pypdf
-pymupdf
-fastapi
-uvicorn
-python-multipart
-langchain_openai
-faiss-cpu
-pymongo
-motor
+# LangChain ecosystem
+langchain==0.2.16
+langchain-core==0.2.38
+langchain-community==0.2.16
+langchain-openai==0.1.23
+
+# Vector DB
+faiss-cpu==1.8.0
+
+# Retrieval
+rank-bm25==0.2.2
+
+# Documents
+pypdf==4.3.1
+pymupdf==1.24.9
+
+# API
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+
+# DB
+pymongo==4.8.0
+motor==3.5.1
+
+# Cache
+redis==5.0.8
+
+# Utils
+python-dotenv==1.0.1
+numpy==1.26.4
