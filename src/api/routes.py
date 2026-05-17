@@ -1,17 +1,9 @@
-"""
-API routes for RAG operations.
-"""
-
-
 from fastapi import APIRouter, UploadFile, File, Header
 from src.rag.document_upload import document_loader
 
-from src.rag.retriever_setup import get_retriever
 from src.llms.llm import llm
 from src.models.query_request import QueryRequest
-
-from src.models.query_request import QueryRequest
-
+from src.rag.retriever_setup import get_combined_retriever
 
 router = APIRouter()
 
@@ -19,17 +11,17 @@ router = APIRouter()
 @router.post("/rag/query")
 async def rag_query(req: QueryRequest):
 
-    retriever = get_retriever()
+    retriever = get_combined_retriever()
 
     if retriever is None:
         return {"answer": "No documents uploaded yet"}
 
-    docs = retriever.invoke(req.query)
+    docs = retriever.get_documents(req.query)
 
     if not docs:
-        return {"answer": "No relevant information found in documents"}
+        return {"answer": "No relevant information found"}
 
-    context = "\n\n".join([doc.page_content for doc in docs])
+    context = "\n\n".join([doc.page_content[:1000] for doc in docs])
 
     prompt = f"""
     You are a helpful assistant.
@@ -54,21 +46,3 @@ async def rag_query(req: QueryRequest):
         "chunks_used": len(docs)
     }
 
-
-@router.post("/rag/documents/upload")
-async def upload_file(
-    file: UploadFile = File(...),
-    description: str = Header(..., alias="X-Description")
-):
-    """
-    Upload a document for RAG processing.
-
-    Args:
-        file: The file to upload (PDF or TXT).
-        description: Document description provided via header.
-
-    Returns:
-        Upload status.
-    """
-    status_upload = document_loader(description, file)
-    return {"status": status_upload}
