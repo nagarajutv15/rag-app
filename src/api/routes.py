@@ -1,11 +1,23 @@
-from src.rag.document_upload import save_document
-from fastapi import APIRouter, UploadFile, File
+from typing import List
+from src.rag.ingestion.document_upload import save_document
+from fastapi import APIRouter, UploadFile, File, Header
+from src.rag.ingestion.document_upload import save_document 
 
 router = APIRouter()
 
-@router.post("/upload")
-async def upload_document(file: UploadFile = File(...)):
+@router.post("/rag/documents/upload")
+async def upload_file(
+    files: List[UploadFile] = File(...),
+    description: str = Header(..., alias="X-Description")
+):
 
-    await save_document(file)
+    status_upload = await save_document(
+        files,
+        description
+    )
 
-    return {"message": f"File '{file.filename}' uploaded successfully"}
+    return {
+        "status": status_upload
+    }
+
+

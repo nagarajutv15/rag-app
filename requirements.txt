@@ -35,3 +35,10 @@ httpx==0.28.1
 
 # Logging / utilities
 rich==14.1.0
+
+# Database
+sqlalchemy==2.0.49
+aiosqlite==0.22.1
+alembic==1.18.4
+mako==1.3.12
+psycopg2-binary==2.9.12

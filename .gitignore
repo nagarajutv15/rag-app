@@ -36,3 +36,9 @@ req-copy.txt
 build/
 dist/
 *.egg-info/
+
+# Database
+*.db
+
+# SQLite temp files
+*.db-journal
