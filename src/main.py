@@ -1,15 +1,15 @@
-def main():
-    print("Hello from ragapp!")
-    print("This is a sample application to demonstrate how to use ragapp.")
-
-
-if __name__ == "__main__":
-    main()
-
 from fastapi import FastAPI
+from src.api.routes import router
 
-app = FastAPI()
+app = FastAPI(
+    title="RAG App"
+)
+
+app.include_router(router)
+
 
 @app.get("/")
-def home():
-    return {"message": "RAG app is running"}
+async def home():
+    return {
+        "message": "RAG app running"
+    }
