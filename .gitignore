@@ -1,18 +1,38 @@
-# Python-generated files
+# Virtual Environment
+.venv/
+
+# Environment variables
+.env
+
+# Python cache
 __pycache__/
-*.py[oc]
+*.pyc
+*.pyo
+*.pyd
+
+# Uploads (user documents)
+uploads/
+
+__pycache__/
+req-copy.txt
+uploads/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+req-copy.txt
+
+# Testing
+.pytest_cache/
+
+# Build artifacts
 build/
 dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-
-
-.env
-.env.*
-
-__init__.py
-*.pyc
-.vscode/
+*.egg-info/
