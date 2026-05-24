@@ -1,33 +1,24 @@
-from pathlib import Path
-from fastapi import UploadFile
-from typing import List
+import pathlib
+import os
 import shutil
+from fastapi import UploadFile
 
+UPLOAD_FOLDER = "uploads"
 
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+os.makedirs(
+    UPLOAD_FOLDER,
+    exist_ok=True
+)
 
+def save_document(file: UploadFile):
+    
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
 
-async def save_document(
-    files: List[UploadFile],
-    description: str
-):
-
-    uploaded_files = []
-
-    for upload in files:
-
-        file_path = UPLOAD_DIR / upload.filename
-
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(upload.file, buffer)
-
-        uploaded_files.append(
-            {
-                "filename": upload.filename,
-                "description": description,
-                "path": str(file_path)
-            }
+    with open(file_path, "wb") as buffer:
+        
+        shutil.copyfileobj(
+            file.file,
+            buffer
         )
 
-    return uploaded_files
+    return file_path
