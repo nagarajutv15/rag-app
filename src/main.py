@@ -17,7 +17,7 @@ async def startup():
     print(" Database initialized")
 
 @app.get("/employees")
-async def get_employees(db= Depends(get_db)):
+def get_employees(db= Depends(get_db)):
    
     employees = db.query(Employee).filter(Employee.employee_id > 0).all()
     
@@ -31,7 +31,6 @@ async def get_employees(db= Depends(get_db)):
                 "projects":[
                     {
                         "project_name": p.project.project_name
-                        
                     }
                     for p in emp.projects
                 ],
@@ -42,9 +41,7 @@ async def get_employees(db= Depends(get_db)):
                     }
                     for his in emp.employment_history
                 ]
-                
             }
             for emp in employees
        ]
-       
     }
