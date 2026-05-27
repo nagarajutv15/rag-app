@@ -5,18 +5,18 @@ from fastapi import (
     Depends,
     Form
 )
-
 from sqlalchemy.orm import Session
-
 from src.models.database import get_db
 from src.models.document_schema import DocumentMetadata
-
 from src.rag.ingestion.document_upload import save_document
 from src.rag.ingestion.document_loader import load_document
 from src.rag.ingestion.text_cleaner import clean_documents
 from src.rag.processing.chunker import chunk_documents
 from src.rag.processing.embeddings import generate_embeddings
+from src.rag.retrieval.retriever import retrieve_documents
 from src.rag.vectorstore.vector_store import store_vectors
+from src.rag.prompts.templates import build_prompt
+from src.llm.llm_service import generate_response
 
 
 router = APIRouter()
@@ -78,17 +78,12 @@ def upload_document(
 
 
     try:
-
         db.add(document)
-
         db.commit()
-
         db.refresh(document)
 
     except Exception:
-
         db.rollback()
-
         raise
 
 
@@ -101,4 +96,80 @@ def upload_document(
         "file_name":document.file_name,
 
         "version":document.version
+    }
+
+
+
+
+@router.get("/search")
+def search(query: str):
+
+    results = retrieve_documents(
+        query=query,
+        top_k=3
+    )
+
+    context_chunks = [
+
+        item["text"]
+
+        for item in results
+    ]
+
+    prompt = build_prompt(
+        question=query,
+        context_chunks=context_chunks
+    )
+
+    response = generate_response(prompt)
+
+    return response
+
+@router.get("/ask")
+def ask_question(
+    query: str
+):
+
+    retrieved_docs = retrieve_documents(
+        query=query,
+        top_k=3
+    )
+
+    if not retrieved_docs:
+
+        return {
+            "question": query,
+            "answer": "I couldn't find information in the documents."
+        }
+
+    context_chunks = [
+
+        doc["text"]
+
+        for doc in retrieved_docs
+    ]
+
+    prompt = build_prompt(
+
+        question=query,
+
+        context_chunks=context_chunks
+    )
+
+    answer = generate_response(
+        prompt
+    )
+
+    return {
+
+        "question": query,
+
+        "answer": answer,
+
+        "sources": [
+
+            doc["chunk_id"]
+
+            for doc in retrieved_docs
+        ]
     }
