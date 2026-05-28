@@ -4,12 +4,12 @@ reranker = CrossEncoder(
     "cross-encoder/ms-marco-MiniLM-L-6-v2"
 )
 
-def rerank(query, documents, top_k=5):
+def rerank(query, documents,top_k=5):
 
-    if not documents:
-        return []
-    
-    pairs = [(query,doc["text"]) for doc in documents]
+    pairs = [
+        (query, doc["text"])
+        for doc in documents
+    ]
 
     scores = reranker.predict(pairs)
 
@@ -17,15 +17,13 @@ def rerank(query, documents, top_k=5):
 
     for doc, score in zip(documents, scores):
 
-        doc["score"] = float(score)
+        doc["rerank_score"] = float(score)
 
         scored_docs.append(doc)
 
-    scored_docs = sorted(
-        scored_docs,
-        key=lambda x:x["score"],
+    scored_docs.sort(
+        key=lambda x: x["rerank_score"],
         reverse=True
     )
 
-    return scored_docs[:top_k]
-
+    return scored_docs[:5]

@@ -12,7 +12,7 @@ from src.rag.processing.embeddings import (
 def retrieve_documents(
     query: str,
     top_k: int = 10,
-    min_score: float = 0.3
+    min_score: float = 0.0
 ):
 
     embedding_model = get_embedding_model()
@@ -39,21 +39,17 @@ def retrieve_documents(
 
         retrieved_chunks.append({
 
-            "text": result.payload.get(
-                "text"
-            ),
+            "text": result.payload.get("text"),
 
-            "chunk_id": result.payload.get(
-                "chunk_id"
-            ),
+            "emails": result.payload.get("emails", []),
+
+            "phone_numbers": result.payload.get("phone_numbers", []),
+
+            "chunk_id": result.payload.get("chunk_id"),
 
             "score": result.score
         })
 
-    reranked_docs = rerank(
-        query=query, 
-        documents=retrieved_chunks, 
-        top_k=top_k
-    )
+ 
 
-    return reranked_docs
+    return retrieved_chunks

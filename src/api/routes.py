@@ -1,13 +1,7 @@
 from urllib import response
-
-from fastapi import (
-    APIRouter,
-    UploadFile,
-    File,
-    Depends,
-    Form
-)
+from src.rag.vectorstore.bm25_store import build_bm25_index
 from sqlalchemy.orm import Session
+from unstructured import documents
 from src.models.database import get_db
 from src.models.document_schema import DocumentMetadata
 from src.rag.ingestion.document_upload import save_document
@@ -16,11 +10,17 @@ from src.rag.ingestion.text_cleaner import clean_documents
 from src.rag.processing.chunker import chunk_documents
 from src.rag.processing.embeddings import generate_embeddings
 from src.rag.processing.metadata_extractor import extract_metadata
-from src.rag.retrieval.retriever import retrieve_documents
+from src.rag.retrieval.hybrid_search import hybrid_search
 from src.rag.vectorstore.vector_store import store_vectors
 from src.rag.prompts.templates import build_prompt
 from src.llm.llm_service import generate_response
-
+from fastapi import (
+    APIRouter,
+    UploadFile,
+    File,
+    Depends,
+    Form
+)
 
 router = APIRouter()
 
@@ -38,15 +38,22 @@ def upload_document(
 
     documents = clean_documents(documents)
 
+    full_text = "\n".join(
+        [doc.page_content for doc in documents]
+    )
+
+    document_metadata = extract_metadata(
+        full_text
+    )
     chunks = chunk_documents(documents)
 
     for chunk in chunks:
 
-        metadata = extract_metadata(
-            chunk.page_content
+        chunk.metadata.update(
+            document_metadata
         )
 
-        chunk.metadata.update(metadata)
+    build_bm25_index(chunks)
 
     vectors = generate_embeddings(chunks)
 
@@ -112,36 +119,10 @@ def upload_document(
 
 
 
-@router.get("/search")
-def search(query: str):
-
-    results = retrieve_documents(
-        query=query,
-        top_k=3
-    )
-
-    context_chunks = [
-
-        item["text"]
-
-        for item in results
-    ]
-
-    prompt = build_prompt(
-        question=query,
-        context_chunks=context_chunks
-    )
-
-    return prompt
-
-
-
 @router.get("/ask")
-def ask_question(
-    query: str
-):
+def ask_question(query: str):
 
-    retrieved_docs = retrieve_documents(
+    retrieved_docs = hybrid_search(
         query=query,
         top_k=3
     )
@@ -153,10 +134,22 @@ def ask_question(
             "answer": "I couldn't find information in the documents."
         }
 
-    context_chunks = [
-        doc["text"]
-        for doc in retrieved_docs
-    ]
+    context_chunks = []
+
+    for doc in retrieved_docs:
+
+        chunk_context = f"""
+        Text:
+        {doc.get("text", "")}
+
+        Emails:
+        {", ".join(doc.get("emails", []))}
+
+        Phone Numbers:
+        {", ".join(doc.get("phone_numbers", []))}
+        """
+
+        context_chunks.append(chunk_context)
 
     prompt = build_prompt(
         question=query,
@@ -173,4 +166,3 @@ def ask_question(
             for doc in retrieved_docs
         ]
     }
-
