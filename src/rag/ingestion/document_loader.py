@@ -50,3 +50,4 @@ def load_document(file_path: str):
             status_code=500,
             detail=f"Document loading failed: {str(e)}"
         )
+    

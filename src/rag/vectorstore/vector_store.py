@@ -4,7 +4,7 @@ from uuid import uuid4
 from langchain_core.documents import Document
 from qdrant_client.models import PointStruct
 
-from src.rag.vectorstore.qdrant_client import (
+from src.rag.vectorstore.qdrant_connection import (
     QDRANT_CLIENT,
     QDRANT_COLLECTION
 )
@@ -20,10 +20,7 @@ def store_vectors(
 
     points = []
 
-    for chunk, vector in zip(
-        chunks,
-        vectors
-    ):
+    for chunk, vector in zip(chunks,vectors):
 
         payload = {
             "text": chunk.page_content,
