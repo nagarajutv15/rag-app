@@ -1,4 +1,5 @@
-from src.rag.vectorstore.qdrant_client import (
+from src.rag.retrieval.reranker import rerank
+from src.rag.vectorstore.qdrant_connection import (
     QDRANT_CLIENT,
     QDRANT_COLLECTION
 )
@@ -10,8 +11,8 @@ from src.rag.processing.embeddings import (
 
 def retrieve_documents(
     query: str,
-    top_k: int = 5,
-    min_score: float = 0.5
+    top_k: int = 10,
+    min_score: float = 0.3
 ):
 
     embedding_model = get_embedding_model()
@@ -49,4 +50,10 @@ def retrieve_documents(
             "score": result.score
         })
 
-    return retrieved_chunks
+    reranked_docs = rerank(
+        query=query, 
+        documents=retrieved_chunks, 
+        top_k=top_k
+    )
+
+    return reranked_docs

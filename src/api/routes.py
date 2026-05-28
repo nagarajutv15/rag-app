@@ -1,3 +1,5 @@
+from urllib import response
+
 from fastapi import (
     APIRouter,
     UploadFile,
@@ -13,6 +15,7 @@ from src.rag.ingestion.document_loader import load_document
 from src.rag.ingestion.text_cleaner import clean_documents
 from src.rag.processing.chunker import chunk_documents
 from src.rag.processing.embeddings import generate_embeddings
+from src.rag.processing.metadata_extractor import extract_metadata
 from src.rag.retrieval.retriever import retrieve_documents
 from src.rag.vectorstore.vector_store import store_vectors
 from src.rag.prompts.templates import build_prompt
@@ -36,6 +39,14 @@ def upload_document(
     documents = clean_documents(documents)
 
     chunks = chunk_documents(documents)
+
+    for chunk in chunks:
+
+        metadata = extract_metadata(
+            chunk.page_content
+        )
+
+        chunk.metadata.update(metadata)
 
     vectors = generate_embeddings(chunks)
 
@@ -121,9 +132,9 @@ def search(query: str):
         context_chunks=context_chunks
     )
 
-    response = generate_response(prompt)
+    return prompt
 
-    return response
+
 
 @router.get("/ask")
 def ask_question(
@@ -143,33 +154,23 @@ def ask_question(
         }
 
     context_chunks = [
-
         doc["text"]
-
         for doc in retrieved_docs
     ]
 
     prompt = build_prompt(
-
         question=query,
-
         context_chunks=context_chunks
     )
 
-    answer = generate_response(
-        prompt
-    )
+    answer = generate_response(prompt)
 
     return {
-
         "question": query,
-
         "answer": answer,
-
         "sources": [
-
             doc["chunk_id"]
-
             for doc in retrieved_docs
         ]
     }
+

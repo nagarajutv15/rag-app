@@ -8,7 +8,7 @@ load_dotenv()
 
 LLM_MODEL = os.getenv(
     "LLM_MODEL",
-    "gpt-4-mini"
+    "gpt-4o-mini"
 )
 
 TEMPERATURE = float(

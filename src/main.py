@@ -9,12 +9,6 @@ from src.models.seed import seed_data
 app = FastAPI()
 app.include_router(router)
 
-@app.on_event("startup")
-async def startup():
-
-    initialize_database()
-
-    print(" Database initialized")
 
 @app.get("/employees")
 def get_employees(db= Depends(get_db)):
