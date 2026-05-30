@@ -3,6 +3,8 @@ from src.rag.vectorstore.bm25_store import bm25_search
 from src.rag.retrieval.reranker import rerank
 
 
+# Hybrid Search combining BM25 and Vector Search
+
 def hybrid_search(
     query: str,
     top_k: int = 10,
@@ -14,7 +16,7 @@ def hybrid_search(
         top_k=top_k
     )
 
-    vectore_results = retrieve_documents(
+    vector_results = retrieve_documents(
         query=query,
         top_k=top_k,
         min_score=min_score
@@ -22,29 +24,45 @@ def hybrid_search(
 
     merged_results = {}
 
-    # ADD VECTOR RESULTS
-    for doc in vectore_results:
+    # VECTOR RESULTS
+    for doc in vector_results:
 
-        chunk_id = doc.get("chunk_id")
+        chunk_id = doc.get(
+            "chunk_id"
+        )
+
+        if not chunk_id:
+            continue
 
         merged_results[chunk_id] = {
 
             **doc,
-            "hubrid_score": doc.get("score", 0.0)*0.7
-        }
-    
 
-    # ADD BM25 RESULTS
+            "hybrid_score": (
+                doc.get("score", 0.0) * 0.7
+            )
+        }
+
+    # BM25 RESULTS
     for doc in bm25_results:
 
-        chunk_id = doc["chunk_id"]
+        chunk_id = doc.get(
+            "chunk_id"
+        )
+
+        if not chunk_id:
+            continue
 
         if chunk_id in merged_results:
 
             merged_results[chunk_id][
                 "hybrid_score"
             ] += (
-                doc.get("bm25_score", 0) * 0.3
+
+                doc.get(
+                    "bm25_score",
+                    0.0
+                ) * 0.3
             )
 
         else:
@@ -54,22 +72,23 @@ def hybrid_search(
                 **doc,
 
                 "hybrid_score": (
-                    doc.get("bm25_score", 0) * 0.3
+
+                    doc.get(
+                        "bm25_score",
+                        0.0
+                    ) * 0.3
                 )
             }
-    
-    # CONVERT TO LIST
+
     final_results = list(
         merged_results.values()
     )
 
-    # SORT
     final_results.sort(
         key=lambda x: x["hybrid_score"],
         reverse=True
     )
 
-    # FINAL RERANK
     reranked_results = rerank(
         query=query,
         documents=final_results,
@@ -77,4 +96,3 @@ def hybrid_search(
     )
 
     return reranked_results
-

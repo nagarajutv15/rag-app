@@ -6,8 +6,9 @@ from qdrant_client.models import (
     Distance
 )
 
-
 load_dotenv()
+
+# Initialize and manage Qdrant vector database connection.
 
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
@@ -23,6 +24,8 @@ QDRANT_CLIENT = QdrantClient(
 collections = QDRANT_CLIENT.get_collections()
 
 existing_names = [collection.name for collection in collections.collections]
+
+# Creates a collection if it doesn't exist, or connects to an existing one.
 
 if QDRANT_COLLECTION not in existing_names:
 
