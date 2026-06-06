@@ -1,29 +1,60 @@
 from sentence_transformers import CrossEncoder
 
+
 reranker = CrossEncoder(
     "cross-encoder/ms-marco-MiniLM-L-6-v2"
 )
 
-def rerank(query, documents,top_k=5):
+
+# Rerank retrieved documents based on semantic relevance
+# between query and document text.
+
+def rerank(
+    query: str,
+    documents: list,
+    top_k: int = 5
+):
+
+    if not documents:
+        return []
 
     pairs = [
-        (query, doc["text"])
+
+        (
+            query,
+            doc.get("text", "")
+        )
+
         for doc in documents
     ]
 
-    scores = reranker.predict(pairs)
+    scores = reranker.predict(
+        pairs
+    )
 
-    scored_docs = []
+    reranked_documents = []
 
-    for doc, score in zip(documents, scores):
+    for doc, score in zip(
+        documents,
+        scores
+    ):
 
-        doc["rerank_score"] = float(score)
+        doc["rerank_score"] = float(
+            score
+        )
 
-        scored_docs.append(doc)
+        reranked_documents.append(
+            doc
+        )
 
-    scored_docs.sort(
-        key=lambda x: x["rerank_score"],
+    reranked_documents.sort(
+
+        key=lambda x: x.get(
+            "rerank_score",
+            0.0
+        ),
+
         reverse=True
     )
 
-    return scored_docs[:5]
+    return reranked_documents[:top_k]

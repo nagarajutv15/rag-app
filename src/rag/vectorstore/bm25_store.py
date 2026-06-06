@@ -1,7 +1,8 @@
-from bm25_store import BM25Okapi
+from rank_bm25 import BM25Okapi
 
 BM25_INDEX = None
 BM25_DOCUMENTS = []
+
 
 def build_bm25_index(chunks):
 
@@ -18,43 +19,79 @@ def build_bm25_index(chunks):
     ]
 
     BM25_INDEX = BM25Okapi(
-            tokenized_docs
+        tokenized_docs
     )
 
     print("BM25 Index Created")
 
 
-
-def bm25_search(query: str, top_k: 5):
+def bm25_search(
+    query: str,
+    top_k: int = 5
+):
 
     global BM25_INDEX
     global BM25_DOCUMENTS
 
+    if BM25_INDEX is None:
+        return []
 
-    toeknized_query  = query.split()
+    tokenized_query = query.split()
 
     scores = BM25_INDEX.get_scores(
-        toeknized_query
+        tokenized_query
     )
 
-    scored_docs = list(zip(BM25_DOCUMENTS, scores))
+    scored_docs = list(
+        zip(BM25_DOCUMENTS, scores)
+    )
 
-    scored_docs.sort(key=lambda x: x[1], reverse=True)
+    scored_docs.sort(
+        key=lambda x: x[1],
+        reverse=True
+    )
 
     results = []
 
     for chunk, score in scored_docs[:top_k]:
 
-        results.append(
-            {
-                "text": chunk.page_content,
+        results.append({
 
-                "chunk_id": chunk.metadata.get("chunk_id"),
+            "chunk_id":
+                chunk.metadata.get(
+                    "chunk_id"
+                ),
 
-                "bm25_score": float(score)
-            }
-        )
+            "document_id":
+                chunk.metadata.get(
+                    "document_id"
+                ),
+
+            "department_id":
+                chunk.metadata.get(
+                    "department_id"
+                ),
+
+            "file_name":
+                chunk.metadata.get(
+                    "file_name"
+                ),
+
+            "version":
+                chunk.metadata.get(
+                    "version"
+                ),
+
+            "is_active":
+                chunk.metadata.get(
+                    "is_active"
+                ),
+
+            "text":
+                chunk.page_content,
+
+            "bm25_score":
+                float(score)
+        })
 
     return results
-
-

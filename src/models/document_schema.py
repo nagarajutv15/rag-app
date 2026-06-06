@@ -5,7 +5,9 @@ from sqlalchemy import (
     Boolean,
     DateTime
 )
+
 from datetime import datetime
+
 from src.models.database import Base
 
 
@@ -29,6 +31,11 @@ class DocumentMetadata(Base):
         nullable=False
     )
 
+    department_id = Column(
+        String,
+        nullable=False
+    )
+
     version = Column(
         Integer,
         default=1
@@ -45,6 +52,11 @@ class DocumentMetadata(Base):
 
     created_at = Column(
         DateTime,
-         default=datetime.utcnow
+        default=datetime.utcnow
     )
 
+    uploaded_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )

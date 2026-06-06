@@ -1,10 +1,11 @@
 from langchain_community.document_loaders import (
     PyPDFLoader,
-    TextLoader
+    TextLoader,
+    Docx2txtLoader
 )
-
 from fastapi import HTTPException
 
+# This function loads a document based on its file type (PDF, TXT, DOCX) and returns the content as a list of documents.
 
 def load_document(file_path: str):
 
@@ -23,11 +24,17 @@ def load_document(file_path: str):
                 encoding="utf-8"
             )
 
+        elif file_path.endswith(".docx"):
+
+            loader = Docx2txtLoader(
+                file_path
+            )
+
         else:
 
             raise HTTPException(
                 status_code=400,
-                detail="Only PDF and TXT files are supported"
+                detail="Only PDF, TXT, and DOCX files are supported"
             )
 
         documents = loader.load()
