@@ -1,12 +1,22 @@
-from src.rag.retrieval.retriever import retrieve_documents
-from src.rag.vectorstore.bm25_store import bm25_search
-from src.rag.retrieval.reranker import rerank
+from src.rag.retrieval.retriever import (
+    retrieve_documents
+)
+
+from src.rag.vectorstore.bm25_store import (
+    bm25_search
+)
+
+from src.rag.retrieval.reranker import (
+    rerank
+)
 
 
-# Hybrid Search combining BM25 and Vector Search
+# Hybrid Search:
+# BM25 + Vector Search + CrossEncoder Reranking
 
 def hybrid_search(
     query: str,
+    department_id: str | None = None,
     top_k: int = 10,
     min_score: float = 0.0
 ):
@@ -18,6 +28,7 @@ def hybrid_search(
 
     vector_results = retrieve_documents(
         query=query,
+        department_id=department_id,
         top_k=top_k,
         min_score=min_score
     )
@@ -25,6 +36,7 @@ def hybrid_search(
     merged_results = {}
 
     # VECTOR RESULTS
+
     for doc in vector_results:
 
         chunk_id = doc.get(
@@ -38,12 +50,16 @@ def hybrid_search(
 
             **doc,
 
-            "hybrid_score": (
-                doc.get("score", 0.0) * 0.7
-            )
+            "hybrid_score":
+
+                doc.get(
+                    "score",
+                    0.0
+                ) * 0.7
         }
 
     # BM25 RESULTS
+
     for doc in bm25_results:
 
         chunk_id = doc.get(
@@ -71,13 +87,12 @@ def hybrid_search(
 
                 **doc,
 
-                "hybrid_score": (
+                "hybrid_score":
 
                     doc.get(
                         "bm25_score",
                         0.0
                     ) * 0.3
-                )
             }
 
     final_results = list(
@@ -85,13 +100,21 @@ def hybrid_search(
     )
 
     final_results.sort(
-        key=lambda x: x["hybrid_score"],
+
+        key=lambda x: x.get(
+            "hybrid_score",
+            0.0
+        ),
+
         reverse=True
     )
 
     reranked_results = rerank(
+
         query=query,
+
         documents=final_results,
+
         top_k=top_k
     )
 

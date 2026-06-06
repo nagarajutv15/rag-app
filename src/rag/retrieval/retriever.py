@@ -1,15 +1,21 @@
-from src.rag.processing.embeddings import get_embedding_model
+from src.rag.processing.embeddings import (
+    get_embedding_model
+)
+
 from src.rag.vectorstore.qdrant_connection import (
     QDRANT_CLIENT,
     QDRANT_COLLECTION
 )
+
 from qdrant_client.models import (
     Filter,
     FieldCondition,
     MatchValue
 )
 
-# Retrieves relevant document chunks based on the input query and optional filters.
+
+# Retrieves relevant document chunks based on the input query
+# and optional department filtering.
 
 def retrieve_documents(
     query: str,
@@ -24,26 +30,49 @@ def retrieve_documents(
     query_vector = embedding_model.embed_query(
         query
     )
-    
-    search_filter = None
+
+    search_conditions = []
 
     if active_only:
 
-        search_filter = Filter(
-            must=[
-                FieldCondition(
-                    key="is_active",
-                    match=MatchValue(
-                        value=True
-                    )
+        search_conditions.append(
+
+            FieldCondition(
+                key="is_active",
+                match=MatchValue(
+                    value=True
                 )
-            ]
+            )
+        )
+
+    if department_id:
+
+        search_conditions.append(
+
+            FieldCondition(
+                key="department_id",
+                match=MatchValue(
+                    value=department_id
+                )
+            )
+        )
+
+    search_filter = None
+
+    if search_conditions:
+
+        search_filter = Filter(
+            must=search_conditions
         )
 
     results = QDRANT_CLIENT.search(
+
         collection_name=QDRANT_COLLECTION,
+
         query_vector=query_vector,
+
         query_filter=search_filter,
+
         limit=top_k
     )
 
@@ -80,20 +109,13 @@ def retrieve_documents(
                 "is_active"
             ),
 
-            "uploaded_by": result.payload.get(
-                "uploaded_by"
-            ),
-
-            "uploaded_at": result.payload.get(
-                "uploaded_at"
-            ),
-
             "text": result.payload.get(
                 "text"
             ),
 
-            "score": result.score
+            "score": float(
+                result.score
+            )
         })
-
 
     return retrieved_chunks

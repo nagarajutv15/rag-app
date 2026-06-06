@@ -1,5 +1,6 @@
 import re
 
+# This function takes a list of documents and performs the following cleaning steps:
 
 def clean_documents(documents):
 

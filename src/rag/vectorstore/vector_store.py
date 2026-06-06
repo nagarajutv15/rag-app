@@ -10,9 +10,6 @@ from src.rag.vectorstore.qdrant_connection import (
 )
 
 
-#This module is responsible for storing the vectors in the Qdrant vector database. It takes the chunks of text and
-# their corresponding vectors, builds the payload, and inserts them into the Qdrant collection.
-
 def store_vectors(
     chunks: List[Document],
     vectors: List[list]
@@ -23,7 +20,10 @@ def store_vectors(
 
     points = []
 
-    for chunk, vector in zip(chunks,vectors):
+    for chunk, vector in zip(
+        chunks,
+        vectors
+    ):
 
         payload = build_payload(
             chunk
@@ -42,35 +42,37 @@ def store_vectors(
         points=points
     )
 
-    print(f"Vectors inserted : {len(points)}")
-    
+    print(
+        f"Vectors inserted: {len(points)}"
+    )
 
 
-
-# Builds the payload for a document chunk.
-
-def build_payload(chunk: Document):
+def build_payload(
+    chunk: Document
+):
 
     metadata = chunk.metadata
 
     return {
 
-        "chunk_id": metadata.get("chunk_id"),
+        "chunk_id":
+            metadata.get("chunk_id"),
 
-        "document_id": metadata.get("document_id"),
+        "document_id":
+            metadata.get("document_id"),
 
-        "department_id": metadata.get("department_id"),
+        "department_id":
+            metadata.get("department_id"),
 
-        "file_name": metadata.get("file_name"),
+        "file_name":
+            metadata.get("file_name"),
 
-        "version": metadata.get("version", 1),
+        "version":
+            metadata.get("version", 1),
 
-        "is_active": metadata.get("is_active", True),
+        "is_active":
+            metadata.get("is_active", True),
 
-        "uploaded_by": metadata.get("uploaded_by"),
-
-        "uploaded_at": metadata.get("uploaded_at"),
-
-        "text": chunk.page_content
+        "text":
+            chunk.page_content
     }
-
