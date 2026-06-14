@@ -27,9 +27,10 @@ def build_bm25_index(chunks):
 
 def bm25_search(
     query: str,
+    department_id: str,
     top_k: int = 5
 ):
-
+    
     global BM25_INDEX
     global BM25_DOCUMENTS
 
@@ -45,6 +46,17 @@ def bm25_search(
     scored_docs = list(
         zip(BM25_DOCUMENTS, scores)
     )
+
+    scored_docs = []
+
+    for chunk, score in zip(BM25_DOCUMENTS, scores):
+
+        if (chunk.metadata.get("department_id")!= department_id):
+            continue
+
+        scored_docs.append(
+            (chunk, score)
+        )
 
     scored_docs.sort(
         key=lambda x: x[1],

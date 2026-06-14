@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+
 from fastapi import (
     APIRouter,
     UploadFile,
@@ -8,9 +9,11 @@ from fastapi import (
 )
 
 from src.models.database import get_db
+
 from src.services.document_service import (
     process_document_upload
 )
+
 from src.services.chat_service import (
     ask_rag_question
 )
@@ -34,11 +37,26 @@ def upload_document(
     )
 
 
-@router.get("/ask")
+@router.post("/ask")
 def ask_question(
-    query: str
+
+    session_id: str = Form(...),
+
+    query: str = Form(...),
+
+    department_id: str = Form(...),
+
+    db: Session = Depends(get_db)
+
 ):
 
     return ask_rag_question(
-        query=query
+
+        query=query,
+
+        department_id=department_id,
+
+        session_id=session_id,
+
+        db=db
     )

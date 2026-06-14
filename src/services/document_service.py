@@ -20,7 +20,8 @@ def process_document_upload(
 ):
 
     file_path = save_document(
-        file
+        file,
+        department_id=department_id
     )
 
     documents = load_document(
