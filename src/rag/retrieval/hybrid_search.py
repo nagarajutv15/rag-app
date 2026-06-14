@@ -23,6 +23,7 @@ def hybrid_search(
 
     bm25_results = bm25_search(
         query=query,
+        department_id=department_id,
         top_k=top_k
     )
 
