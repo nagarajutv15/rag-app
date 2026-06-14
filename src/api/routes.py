@@ -39,15 +39,10 @@ def upload_document(
 
 @router.post("/ask")
 def ask_question(
-
     session_id: str = Form(...),
-
     query: str = Form(...),
-
     department_id: str = Form(...),
-
     db: Session = Depends(get_db)
-
 ):
 
     return ask_rag_question(

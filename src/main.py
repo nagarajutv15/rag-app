@@ -1,41 +1,18 @@
-from fastapi import FastAPI, Depends
-from sqlalchemy import text
+from fastapi import FastAPI
+
 from src.api.routes import router
-from src.models.database import engine, get_db
-from src.models.init_db import initialize_database
-from src.models.schema import Employee, Project
-from src.models.seed import seed_data
+from src.api.session_routes import router as session_router
+
+# Import models so SQLAlchemy registers them
+from src.models.document_schema import DocumentMetadata
+from src.models.chat_session import ChatSession
+from src.models.chat_message import ChatMessage
+from src.models.database import Base, engine
 
 app = FastAPI()
+
 app.include_router(router)
+app.include_router(session_router)
 
 
-@app.get("/employees")
-def get_employees(db= Depends(get_db)):
-   
-    employees = db.query(Employee).filter(Employee.employee_id > 0).all()
-    
-    return {
-       
-       "data": [ 
-            {
-                "employee_id": emp.employee_id,
-                "first_name": emp.name,
-                "department":emp.department.department_name if emp.department else None,
-                "projects":[
-                    {
-                        "project_name": p.project.project_name
-                    }
-                    for p in emp.projects
-                ],
-                "employee_history":[
-                    {
-                        "history_id": his.history_id,
-                        "privious_company": his.previous_company
-                    }
-                    for his in emp.employment_history
-                ]
-            }
-            for emp in employees
-       ]
-    }
+Base.metadata.create_all(bind=engine)
