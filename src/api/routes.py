@@ -10,6 +10,7 @@ from fastapi import (
 
 from src.models.database import get_db
 
+from src.rag.adaptive.query_classifier import classify_query
 from src.services.document_service import (
     process_document_upload
 )
@@ -41,17 +42,25 @@ def upload_document(
 def ask_question(
     session_id: str = Form(...),
     query: str = Form(...),
-    department_id: str = Form(...),
     db: Session = Depends(get_db)
 ):
 
     return ask_rag_question(
-
         query=query,
-
-        department_id=department_id,
-
         session_id=session_id,
-
         db=db
     )
+
+
+@router.get("/route")
+def test_route(
+    query: str
+):
+
+    route = classify_query(
+        query
+    )
+
+    return {
+        "route": route
+    }

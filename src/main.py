@@ -16,3 +16,11 @@ app.include_router(session_router)
 
 
 Base.metadata.create_all(bind=engine)
+
+from src.rag.adaptive.web_search import web_search
+
+print(
+    web_search(
+        "latest AI regulations in Europe"
+    )
+)
