@@ -2,7 +2,6 @@ from src.models.database import (
     engine,
     Base
 )
-from src.models.seed import seed_data
 from src.models.document_schema import (
     DocumentMetadata
 )
@@ -22,7 +21,6 @@ def initialize_database():
     print(" Tables created")
 
     # Insert dummy data
-    seed_data()
     print(Base.metadata.tables.keys())
 
     print(" Database initialized")
