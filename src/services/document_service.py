@@ -8,6 +8,8 @@ from src.rag.ingestion.document_ingestion import (
 )
 from src.rag.vectorstore.bm25_store import build_bm25_index
 from src.rag.vectorstore.vector_store import store_vectors
+from src.rag.vectorstore.bm25_store import remove_document_chunks
+from src.rag.vectorstore.vector_store import delete_document_vectors
 
 
 
@@ -40,9 +42,17 @@ def process_document_upload(
     version = 1
 
     if existing_document:
+
+        remove_document_chunks(existing_document.document_id)
+
+        delete_document_vectors(existing_document.document_id)
+
         existing_document.is_active = False
+
         db.add(existing_document)
+
         version = existing_document.version + 1
+        
 
     uploaded_at = datetime.utcnow()
 
@@ -91,3 +101,9 @@ def process_document_upload(
         "file_name": document.file_name,
         "version": document.version
     }
+
+
+
+#----------------------------------------------------------------------------------------------------------#
+
+

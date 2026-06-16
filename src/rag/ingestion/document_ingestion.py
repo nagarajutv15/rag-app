@@ -1,4 +1,4 @@
-import pathlib
+import uuid
 import os
 import shutil
 from fastapi import UploadFile
@@ -62,12 +62,9 @@ EMBEDDING_BATCH_SIZE = int(os.getenv(
 def load_document(file_path: str):
 
     try:
-
         if file_path.endswith(".pdf"):
 
-            loader = PyPDFLoader(
-                file_path
-            )
+            loader = PyPDFLoader(file_path)
 
         elif file_path.endswith(".txt"):
 
@@ -78,9 +75,7 @@ def load_document(file_path: str):
 
         elif file_path.endswith(".docx"):
 
-            loader = Docx2txtLoader(
-                file_path
-            )
+            loader = Docx2txtLoader(file_path)
 
         else:
 
@@ -167,12 +162,13 @@ def chunk_documents(
         ]
     )
 
-    chunks = splitter.split_documents(
-        documents
-    )
+    chunks = splitter.split_documents(documents)
 
-    for index, chunk in enumerate(chunks):
-        chunk.metadata["chunk_id"] = index + 1
+    for chunk in chunks:
+
+        chunk.metadata["chunk_id"] = str(
+            uuid.uuid4()
+        )
 
     return chunks
 

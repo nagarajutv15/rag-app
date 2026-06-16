@@ -4,7 +4,6 @@ from src.rag.ingestion.document_ingestion import (
     load_document,
     chunk_documents
 )
-from src.rag.vectorstore.bm25_store import build_bm25_index
 
 
 
@@ -130,3 +129,44 @@ def rebuild_bm25_index(db):
 
         print(f"BM25 rebuilt with {len(all_chunks)} chunks")
         
+
+
+
+#----------------------------------------------------------------------------------------------------------#
+# This function removes all BM25 chunks associated with a specific document ID and rebuilds the index accordingly.
+
+
+
+def remove_document_chunks(
+    document_id: int
+):
+
+    global BM25_DOCUMENTS
+    global BM25_INDEX
+
+    BM25_DOCUMENTS = [
+
+        chunk
+
+        for chunk in BM25_DOCUMENTS
+
+        if chunk.metadata.get("document_id") != document_id
+    ]
+
+    if BM25_DOCUMENTS:
+
+        tokenized_docs = [
+
+            chunk.page_content.split()
+
+            for chunk in BM25_DOCUMENTS
+        ]
+
+        BM25_INDEX = BM25Okapi(tokenized_docs)
+
+    else:
+
+        BM25_INDEX = None
+
+    print(f"Removed BM25 chunks for document {document_id}")
+    
