@@ -143,6 +143,7 @@ def save_document(
 #----------------------------------------------------------------------------------------------------------#
 # This function chunks a list of documents into smaller pieces based on the specified chunk size and overlap.
 
+
 def chunk_documents(
     documents: List[Document]
 ) -> List[Document]:
