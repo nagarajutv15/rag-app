@@ -1,26 +1,27 @@
 from fastapi import FastAPI
-
 from src.api.routes import router
-from src.api.session_routes import router as session_router
-
-# Import models so SQLAlchemy registers them
-from src.models.document_schema import DocumentMetadata
-from src.models.chat_session import ChatSession
-from src.models.chat_message import ChatMessage
 from src.models.database import Base, engine
+from src.models.database import SessionLocal
+from src.rag.vectorstore.bm25_store import rebuild_bm25_index
+
 
 app = FastAPI()
 
 app.include_router(router)
-app.include_router(session_router)
-
 
 Base.metadata.create_all(bind=engine)
 
-from src.rag.adaptive.web_search import web_search
 
-print(
-    web_search(
-        "latest AI regulations in Europe"
-    )
-)
+# Startup Event: Rebuild BM25 Index on Application Startup
+@app.on_event("startup")
+def startup():
+
+    db = SessionLocal()
+
+    try:
+
+        rebuild_bm25_index(db)
+
+    finally:
+
+        db.close()

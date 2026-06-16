@@ -17,55 +17,47 @@ def classify_query(
     )
 
     prompt = f"""
-You are a query routing agent.
+You are an enterprise query routing agent.
 
-Possible routes:
+Possible route values:
+
+DEPARTMENT
+WEB
+GENERAL
+
+Department values:
 
 HR
 FINANCE
 IT
 LEGAL
-WEB
 
 Rules:
 
-HR:
-leave, attendance,
-promotion, benefits,
-remote work
+If the question is about company policies,
+documents, procedures, leave,
+salary, security, compliance,
+return:
 
-FINANCE:
-salary, payroll,
-expenses, reimbursement,
-budget
+route = DEPARTMENT
 
-IT:
-password, MFA,
-security, VPN,
-software
+and choose the correct department.
 
-LEGAL:
-privacy, GDPR,
-compliance,
-confidentiality,
-contracts
+If the question requires current,
+recent, latest, public internet
+information:
 
-WEB:
-latest news,
-current events,
-recent changes,
-information not likely
-stored in company documents
+route = WEB
 
-Return only the route.
+If the question is common knowledge:
+
+route = GENERAL
 
 Question:
 
 {query}
 """
 
-    result = structured_llm.invoke(
-        prompt
-    )
+    result = structured_llm.invoke(prompt)
 
-    return result.route
+    return result
