@@ -79,7 +79,6 @@ def adaptive_retrieve(
         current_query = rewrite_query(current_query)
 
         print(f"Rewritten Query: {current_query}")
-        print(f"Rewritten Query: {current_query}")
 
     print("Adaptive retrieval failed.")
 

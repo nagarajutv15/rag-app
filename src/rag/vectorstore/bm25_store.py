@@ -91,6 +91,12 @@ def bm25_search(
 
 def rebuild_bm25_index(db):
 
+    global BM25_DOCUMENTS
+    global BM25_INDEX
+
+    BM25_DOCUMENTS = []
+    BM25_INDEX = None
+    
     active_documents = (
         db.query(DocumentMetadata)
         .filter(
