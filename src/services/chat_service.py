@@ -127,12 +127,14 @@ def handle_department_query(
         "department": route.department,
         "answer": answer,
         "sources": [
-
-            doc.get("chunk_id")
-
+            {
+                "file_name": doc.get("file_name"),
+                "version": doc.get("version"),
+                "chunk_id": doc.get("chunk_id")
+            }
             for doc in retrieved_docs
         ]
-    }
+}
 
 
 #----------------------------------------------------------------------------------------------------------#

@@ -3,6 +3,8 @@ from src.api.routes import router
 from src.models.database import Base, engine
 from src.models.database import SessionLocal
 from src.rag.vectorstore.bm25_store import rebuild_bm25_index
+from src.models.organization_seed import seed_organization_data
+from src.models import SessionLocal
 
 
 app = FastAPI()
@@ -24,4 +26,18 @@ def startup():
 
     finally:
 
+        db.close()
+
+
+
+@app.on_event("startup")
+async def startup():
+
+    Base.metadata.create_all(bind=engine)
+
+    db = SessionLocal()
+
+    try:
+        seed_organization_data(db)
+    finally:
         db.close()
