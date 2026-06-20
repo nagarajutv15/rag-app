@@ -18,7 +18,8 @@ VECTOR_SIZE = int(os.getenv("VECTOR_SIZE", 1536))
 
 QDRANT_CLIENT = QdrantClient(
     host = QDRANT_HOST,
-    port = QDRANT_PORT
+    port = QDRANT_PORT,
+    check_compatibility = False
 )
 
 collections = QDRANT_CLIENT.get_collections()

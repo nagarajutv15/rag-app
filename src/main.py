@@ -1,10 +1,9 @@
 from fastapi import FastAPI
 from src.api.routes import router
 from src.models.database import Base, engine
-from src.models.database import SessionLocal
+from src.models import SessionLocal
 from src.rag.vectorstore.bm25_store import rebuild_bm25_index
 from src.models.organization_seed import seed_organization_data
-from src.models import SessionLocal
 
 
 app = FastAPI()

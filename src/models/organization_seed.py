@@ -5,7 +5,6 @@ from src.models.orgaization import (
     Employee,
     Client,
     Project,
-    ProjectMember,
     Payroll,
     SalaryHistory,
     Asset,
@@ -215,31 +214,6 @@ def seed_organization_data(db):
     ])
 
     db.flush()
-
-    # -----------------------------------------------------
-    # Project Members
-    # -----------------------------------------------------
-
-    db.add_all([
-        ProjectMember(
-            employee=nagaraju,
-            project=rag_project,
-            project_role="Senior Developer",
-            allocation_percent=100
-        ),
-        ProjectMember(
-            employee=priya,
-            project=rag_project,
-            project_role="Developer",
-            allocation_percent=80
-        ),
-        ProjectMember(
-            employee=nagaraju,
-            project=employee_portal,
-            project_role="Technical Lead",
-            allocation_percent=20
-        )
-    ])
 
     # -----------------------------------------------------
     # Payroll
