@@ -85,6 +85,13 @@ def hybrid_search(
         top_k=top_k,
     )
 
+    print("=" * 50)
+    print(f"Question: {query}")
+    print(f"Department: {department_id}")
+    print(f"BM25 Results: {len(bm25_results)}")
+    print(f"Vector Results: {len(vector_results)}")
+    print("=" * 50)
+
     return reranked_results
 
 

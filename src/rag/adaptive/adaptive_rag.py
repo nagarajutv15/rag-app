@@ -1,62 +1,10 @@
 from pydantic import BaseModel
-
 from src.llm.llm_service import llm
-
 from src.rag.retrieval.hybrid_search import hybrid_search
 
-#----------------------------------------------------------------------------------------------------------#
-# This Pydantic model defines the structure for grading the relevance of retrieved documents.
-
-class RetrievalGrade(BaseModel):
-    relevant: bool
 
 
-#----------------------------------------------------------------------------------------------------------#
-# This function grades the relevance of retrieved documents based on the question and context provided.
-
-
-def grade_retrieval(
-    question: str,
-    context: str
-) -> bool:
-
-    structured_llm = (
-        llm.with_structured_output(RetrievalGrade)
-    )
-
-    prompt = f"""
-You are a retrieval evaluator.
-
-Question:
-
-{question}
-
-Retrieved Context:
-
-{context}
-
-Evaluate:
-
-1. Is the context relevant to the question?
-2. Is there enough information to answer?
-3. Would answering from this context
-   cause hallucination?
-
-Return:
-
-relevant = true
-
-or
-
-relevant = false
-"""
-
-    result = structured_llm.invoke(prompt)
-
-    return result.relevant
-
-
-
+MIN_RERANK_SCORE = 3.0
 
 #----------------------------------------------------------------------------------------------------------#
 # This function rewrites the query for better retrieval based on the original question and specified rules.
@@ -114,35 +62,23 @@ def adaptive_retrieve(
         )
 
         if not retrieved_docs:
-
             print("No documents found.")
-
             current_query = rewrite_query(current_query)
-            
             continue
 
-        context = "\n\n".join(
+        top_score = retrieved_docs[0].get("rerank_score",0.0)
 
-            doc.get("text", "")
+        print(f"Top Rerank Score: {top_score}")
 
-            for doc in retrieved_docs
-        )
-
-        relevant = (
-            grade_retrieval(
-                question=query,
-                context=context
-            )
-        )
-
-        print(f"Relevant: {relevant}")
-
-        if relevant:
+        if top_score >= MIN_RERANK_SCORE:
             print("Retrieval accepted.")
             return retrieved_docs
 
+        print("Low confidence retrieval.")
+
         current_query = rewrite_query(current_query)
-        
+
+        print(f"Rewritten Query: {current_query}")
         print(f"Rewritten Query: {current_query}")
 
     print("Adaptive retrieval failed.")
