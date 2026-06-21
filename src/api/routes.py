@@ -90,3 +90,13 @@ def start_session(
             session.session_id
     }
 
+#----------------------------------------------------------------------------------------------------------#
+
+GET /organization/employees
+
+GET /organization/projects
+
+GET /organization/assets
+
+def get_org_emp(db: Session = Depends(get_db)):
+    return 

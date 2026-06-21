@@ -4,39 +4,33 @@ from src.models.database import Base, engine
 from src.models import SessionLocal
 from src.rag.vectorstore.bm25_store import rebuild_bm25_index
 from src.models.organization_seed import seed_organization_data
-
+from src.api.organization import router as organization_router
+from src.agents.graph_builder import graph
 
 app = FastAPI()
 
 app.include_router(router)
+app.include_router(organization_router)
 
 Base.metadata.create_all(bind=engine)
-
-
-# Startup Event: Rebuild BM25 Index on Application Startup
-@app.on_event("startup")
-def startup():
-
-    db = SessionLocal()
-
-    try:
-
-        rebuild_bm25_index(db)
-
-    finally:
-
-        db.close()
-
 
 
 @app.on_event("startup")
 async def startup():
 
-    Base.metadata.create_all(bind=engine)
-
     db = SessionLocal()
 
     try:
+        rebuild_bm25_index(db)
         seed_organization_data(db)
+
     finally:
         db.close()
+
+    result = graph.invoke(
+        {
+            "question": "Who reports to John Smith?"
+        }
+    )
+
+    print(result)
