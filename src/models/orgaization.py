@@ -1,9 +1,19 @@
-from sqlalchemy import Date, String, Column, Integer, DateTime, ForeignKey
 from datetime import datetime
+from sqlalchemy import (
+Column,
+Integer,
+String,
+Date,
+DateTime,
+ForeignKey
+)
 from sqlalchemy.orm import relationship
 from src.models.database import Base
 
-#----------------------------------------------------------------------------------------------------------------------#
+
+# ==========================================================
+# Department
+# ==========================================================
 
 class Department(Base):
 
@@ -20,6 +30,12 @@ class Department(Base):
     department_head_id = Column(
         Integer,
         ForeignKey("employees.employee_id"),
+        nullable=True
+    )
+
+    department_head = relationship(
+        "Employee",
+        foreign_keys=[department_head_id]
     )
 
     employees = relationship(
@@ -28,9 +44,10 @@ class Department(Base):
         foreign_keys="Employee.department_id"
     )
 
-    
-#----------------------------------------------------------------------------------------------------------------------#
 
+# ==========================================================
+# Employee
+# ==========================================================
 
 class Employee(Base):
 
@@ -48,7 +65,10 @@ class Employee(Base):
 
     designation = Column(String(100))
 
-    joining_date = Column(DateTime, default=datetime.utcnow)
+    joining_date = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
 
     employment_type = Column(String(50))
 
@@ -56,25 +76,38 @@ class Employee(Base):
 
     department_id = Column(
         Integer,
-        ForeignKey("departments.department_id"),
+        ForeignKey("departments.department_id")
+    )
+
+    project_id = Column(
+        Integer,
+        ForeignKey("projects.project_id"),
+        nullable=True
     )
 
     manager_id = Column(
         Integer,
-        ForeignKey("employees.employee_id")
+        ForeignKey("employees.employee_id"),
+        nullable=True
     )
 
     hr_id = Column(
         Integer,
-        ForeignKey("employees.employee_id")
+        ForeignKey("employees.employee_id"),
+        nullable=True
     )
 
     department = relationship(
         "Department",
         back_populates="employees",
-        foreign_keys=["department_id"]
+        foreign_keys=[department_id]
     )
-    
+
+    project = relationship(
+        "Project",
+        foreign_keys=[project_id]
+    )
+
     manager = relationship(
         "Employee",
         remote_side=[employee_id],
@@ -88,7 +121,9 @@ class Employee(Base):
     )
 
 
-#----------------------------------------------------------------------------------------------------------------------#
+# ==========================================================
+# Client
+# ==========================================================
 
 class Client(Base):
 
@@ -96,7 +131,7 @@ class Client(Base):
 
     client_id = Column(Integer, primary_key=True)
 
-    client_name = Column(String(150))
+    client_name = Column(String(150), nullable=False)
 
     industry = Column(String(100))
 
@@ -110,7 +145,8 @@ class Client(Base):
     )
 
     account_manager = relationship(
-        "Employee"
+        "Employee",
+        foreign_keys=[account_manager_id]
     )
 
     projects = relationship(
@@ -118,14 +154,18 @@ class Client(Base):
         back_populates="client"
     )
 
-#----------------------------------------------------------------------------------------------------------------------#
+
+# ==========================================================
+# Project
+# ==========================================================
 
 class Project(Base):
+
     __tablename__ = "projects"
 
     project_id = Column(Integer, primary_key=True)
 
-    project_name = Column(String(150))
+    project_name = Column(String(150), nullable=False)
 
     status = Column(String(50))
 
@@ -149,39 +189,24 @@ class Project(Base):
     )
 
     project_manager = relationship(
-        "Employee"
+        "Employee",
+        foreign_keys=[project_manager_id]
     )
 
-#----------------------------------------------------------------------------------------------------------------------#
-
-class ProjectMember(Base):
-    __tablename__ = "project_members"
-
-    id = Column(Integer, primary_key=True)
-
-    project_id = Column(
-        Integer,
-        ForeignKey("projects.project_id")
+    employees = relationship(
+        "Employee",
+        back_populates="project",
+        foreign_keys="Employee.project_id",
+        overlaps="project_manager"
     )
 
-    employee_id = Column(
-        Integer,
-        ForeignKey("employees.employee_id")
-    )
 
-    project_role = Column(String(100))
-
-    allocation_percent = Column(Integer)
-
-    employee = relationship("Employee")
-
-    project = relationship("Project")
-
-
-#----------------------------------------------------------------------------------------------------------------------#
-
+# ==========================================================
+# Payroll
+# ==========================================================
 
 class Payroll(Base):
+
     __tablename__ = "payroll"
 
     payroll_id = Column(Integer, primary_key=True)
@@ -199,12 +224,17 @@ class Payroll(Base):
 
     effective_date = Column(Date)
 
-    employee = relationship("Employee")
+    employee = relationship(
+        "Employee",
+        foreign_keys=[employee_id]
+    )
 
-#----------------------------------------------------------------------------------------------------------------------#
-
+# ==========================================================
+# Salary History
+# ==========================================================
 
 class SalaryHistory(Base):
+
     __tablename__ = "salary_history"
 
     salary_history_id = Column(
@@ -225,12 +255,18 @@ class SalaryHistory(Base):
 
     increment_date = Column(Date)
 
-    employee = relationship("Employee")
+    employee = relationship(
+        "Employee",
+        foreign_keys=[employee_id]
+    )
 
 
-#----------------------------------------------------------------------------------------------------------------------#
+# ==========================================================
+# Assets
+# ==========================================================
 
 class Asset(Base):
+
     __tablename__ = "assets"
 
     asset_id = Column(Integer, primary_key=True)
@@ -250,12 +286,18 @@ class Asset(Base):
 
     status = Column(String(50))
 
-    employee = relationship("Employee")
+    employee = relationship(
+        "Employee",
+        foreign_keys=[assigned_employee_id]
+    )
 
-#----------------------------------------------------------------------------------------------------------------------#
 
+# ==========================================================
+# Leave Records
+# ==========================================================
 
 class LeaveRecord(Base):
+
     __tablename__ = "leave_records"
 
     leave_id = Column(Integer, primary_key=True)
@@ -273,13 +315,18 @@ class LeaveRecord(Base):
 
     status = Column(String(30))
 
-    employee = relationship("Employee")
+    employee = relationship(
+        "Employee",
+        foreign_keys=[employee_id]
+    )
 
 
-#----------------------------------------------------------------------------------------------------------------------#
-
+# ==========================================================
+# Audit Logs
+# ==========================================================
 
 class AuditLog(Base):
+
     __tablename__ = "audit_logs"
 
     audit_id = Column(Integer, primary_key=True)
@@ -299,4 +346,8 @@ class AuditLog(Base):
 
     event_timestamp = Column(DateTime)
 
-    employee = relationship("Employee")
+    employee = relationship(
+        "Employee",
+        foreign_keys=[user_employee_id]
+    )
+
