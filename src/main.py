@@ -29,7 +29,8 @@ async def startup():
 
     result = graph.invoke(
         {
-            "question": "Who reports to John Smith?"
+            "question":
+            "Hey who is Nagaraju and may i know who is he manager and in which project he is working and which client and what assest Id taht he own?"
         }
     )
 

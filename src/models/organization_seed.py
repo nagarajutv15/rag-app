@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from src.models.orgaization import (
+from src.models.organization import (
     Department,
     Employee,
     Client,
@@ -9,7 +9,8 @@ from src.models.orgaization import (
     SalaryHistory,
     Asset,
     LeaveRecord,
-    AuditLog
+    AuditLog,
+    ProjectMember
 )
 
 
@@ -208,11 +209,66 @@ def seed_organization_data(db):
         project_manager=engineering_manager
     )
 
+    analytics_platform = Project(
+        project_name="Customer Analytics Platform",
+        status="ACTIVE",
+        start_date=date(2025, 5, 1),
+        client=amazon,
+        project_manager=engineering_manager
+    )
+
     db.add_all([
         rag_project,
-        employee_portal
+        employee_portal,
+        analytics_platform
     ])
 
+    db.flush()
+
+    # -----------------------------------------------------
+    # Project Members
+    # -----------------------------------------------------
+
+    project_members = [
+
+        ProjectMember(
+            employee=nagaraju,
+            project=rag_project,
+            role="Senior Developer"
+        ),
+
+        ProjectMember(
+            employee=priya,
+            project=rag_project,
+            role="Software Developer"
+        ),
+
+        ProjectMember(
+            employee=engineering_manager,
+            project=rag_project,
+            role="Project Manager"
+        ),
+
+        ProjectMember(
+            employee=nagaraju,
+            project=employee_portal,
+            role="Technical Lead"
+        ),
+
+        ProjectMember(
+            employee=priya,
+            project=analytics_platform,
+            role="Backend Developer"
+        ),
+
+        ProjectMember(
+            employee=nagaraju,
+            project=analytics_platform,
+            role="Solution Architect"
+        )
+    ]
+
+    db.add_all(project_members)
     db.flush()
 
     # -----------------------------------------------------
@@ -327,3 +383,6 @@ def seed_organization_data(db):
     db.commit()
 
     print("Organization seed data inserted successfully.")
+
+
+   

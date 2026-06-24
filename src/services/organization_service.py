@@ -80,3 +80,112 @@ class OrganizationService:
             })
 
         return result
+    
+
+    @staticmethod
+    def get_employees_reporting_to(
+            db: Session,
+            manager_name: str
+    ):
+
+        manager = (
+            db.query(Employee)
+            .filter(
+                Employee.employee_name.ilike(
+                    manager_name
+                )
+            )
+            .first()
+        )
+
+        if not manager:
+            return []
+
+        employees = (
+            db.query(Employee)
+            .filter(
+                Employee.manager_id ==
+                manager.employee_id
+            )
+            .all()
+        )
+
+        return [
+            employee.employee_name
+            for employee in employees
+        ]
+    
+
+    @staticmethod
+    def get_asset_owner(
+            db: Session,
+            asset_code: str
+    ):
+
+        asset = (
+            db.query(Asset)
+            .filter(
+                Asset.asset_code == asset_code
+            )
+            .first()
+        )
+
+        if not asset:
+            return None
+
+        return {
+            "asset_code": asset.asset_code,
+            "owner": (
+                asset.employee.employee_name
+                if asset.employee
+                else None
+            )
+        }
+    
+    @staticmethod
+    def get_employees_by_department(
+            db: Session,
+            department_name: str
+    ):
+
+        department = (
+            db.query(Department)
+            .filter(
+                Department.department_name.ilike(
+                    department_name
+                )
+            )
+            .first()
+        )
+
+        if not department:
+            return []
+
+        return [
+            employee.employee_name
+            for employee in department.employees
+        ]    
+    
+    @staticmethod
+    def get_projects_by_client(
+            db: Session,
+            client_name: str
+    ):
+
+        projects = (
+            db.query(Project)
+            .join(Project.client)
+            .filter(
+                Project.client.has(
+                    client_name=client_name
+                )
+            )
+            .all()
+        )
+
+        return [
+            project.project_name
+            for project in projects
+        ]    
+    
+    

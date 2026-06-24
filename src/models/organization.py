@@ -79,12 +79,6 @@ class Employee(Base):
         ForeignKey("departments.department_id")
     )
 
-    project_id = Column(
-        Integer,
-        ForeignKey("projects.project_id"),
-        nullable=True
-    )
-
     manager_id = Column(
         Integer,
         ForeignKey("employees.employee_id"),
@@ -103,11 +97,6 @@ class Employee(Base):
         foreign_keys=[department_id]
     )
 
-    project = relationship(
-        "Project",
-        foreign_keys=[project_id]
-    )
-
     manager = relationship(
         "Employee",
         remote_side=[employee_id],
@@ -120,6 +109,10 @@ class Employee(Base):
         foreign_keys=[hr_id]
     )
 
+    project_members = relationship(
+        "ProjectMember",
+        back_populates="employee"
+    )
 
 # ==========================================================
 # Client
@@ -193,11 +186,9 @@ class Project(Base):
         foreign_keys=[project_manager_id]
     )
 
-    employees = relationship(
-        "Employee",
-        back_populates="project",
-        foreign_keys="Employee.project_id",
-        overlaps="project_manager"
+    project_members = relationship(
+        "ProjectMember",
+        back_populates="project"
     )
 
 
@@ -351,3 +342,35 @@ class AuditLog(Base):
         foreign_keys=[user_employee_id]
     )
 
+
+# ==========================================================
+# ProjectMember
+# ==========================================================
+
+class ProjectMember(Base):
+
+    __tablename__ = "project_members"
+
+    id = Column(Integer, primary_key=True)
+
+    employee_id = Column(
+        Integer,
+        ForeignKey("employees.employee_id")
+    )
+
+    project_id = Column(
+        Integer,
+        ForeignKey("projects.project_id")
+    )
+
+    role = Column(String(100))
+
+    employee = relationship(
+        "Employee",
+        back_populates="project_members"
+    )
+
+    project = relationship(
+        "Project",
+        back_populates="project_members"
+    )
