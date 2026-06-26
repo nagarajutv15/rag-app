@@ -1,7 +1,7 @@
-from src.rag.vectorstore.bm25_store import bm25_search
+from src.vectorstore.bm25_store import bm25_search
 from sentence_transformers import CrossEncoder
 from src.rag.ingestion.document_ingestion import get_embedding_model
-from src.rag.vectorstore.qdrant_connection import (
+from src.vectorstore.qdrant_connection import (
     QDRANT_CLIENT,
     QDRANT_COLLECTION
 )

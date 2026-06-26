@@ -6,10 +6,10 @@ from src.rag.ingestion.document_ingestion import (
     chunk_documents, 
     generate_embeddings
 )
-from src.rag.vectorstore.bm25_store import build_bm25_index
-from src.rag.vectorstore.vector_store import store_vectors
-from src.rag.vectorstore.bm25_store import remove_document_chunks
-from src.rag.vectorstore.vector_store import delete_document_vectors
+from src.vectorstore.bm25_store import build_bm25_index
+from src.vectorstore.vector_store import store_vectors
+from src.vectorstore.bm25_store import remove_document_chunks
+from src.vectorstore.vector_store import delete_document_vectors
 
 
 

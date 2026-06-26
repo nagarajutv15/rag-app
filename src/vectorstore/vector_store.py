@@ -2,7 +2,7 @@ from typing import List
 from uuid import uuid4
 from langchain_core.documents import Document
 from qdrant_client.models import PointStruct
-from src.rag.vectorstore.qdrant_connection import (
+from src.vectorstore.qdrant_connection import (
     QDRANT_CLIENT,
     QDRANT_COLLECTION
 )

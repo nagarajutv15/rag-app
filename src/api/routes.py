@@ -16,7 +16,6 @@ from fastapi import (
 
 router = APIRouter()
 
-
 #----------------------------------------------------------------------------------------------------------#
 # API Routes for Document Upload, Question Answering, and Session Management
 
@@ -55,24 +54,6 @@ def ask_question(
 
 
 #----------------------------------------------------------------------------------------------------------#
-# This Route is used to classify the query and return the route to which the query should be sent. It takes the query as input and returns the route.
-
-@router.get("/route")
-def test_route(
-    query: str
-):
-
-    route = classify_query(
-        query
-    )
-
-    return {
-        "route": route
-    }
-
-
-
-#----------------------------------------------------------------------------------------------------------#
 # This Route is used to start a new session. It takes no input and returns the session_id.
 
 @router.post("/sessions")
@@ -85,9 +66,7 @@ def start_session(
     )
 
     return {
-
         "session_id":
             session.session_id
     }
 
-#----------------------------------------------------------------------------------------------------------#

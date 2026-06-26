@@ -6,6 +6,8 @@ from sqlalchemy import (
 from datetime import datetime
 from uuid import uuid4
 from src.models.database import Base
+from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
 
 
 class ChatSession(Base):
@@ -20,11 +22,17 @@ class ChatSession(Base):
 
     created_at = Column(
         DateTime,
-        default=datetime.utcnow
+        default=datetime.now(timezone.utc)
     )
 
     last_activity_at = Column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc)
+    )
+
+    messages = relationship(
+        "ChatMessage",
+        back_populates="session",
+        cascade="all, delete-orphan"
     )

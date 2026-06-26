@@ -6,9 +6,8 @@ from sqlalchemy import (
     ForeignKey,
     Text
 )
-
-from datetime import datetime
-
+from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
 from src.models.database import Base
 
 
@@ -27,7 +26,7 @@ class ChatMessage(Base):
         ForeignKey(
             "chat_sessions.session_id"
         ),
-        nullable=False
+        index=True
     )
 
     role = Column(
@@ -42,5 +41,10 @@ class ChatMessage(Base):
 
     created_at = Column(
         DateTime,
-        default=datetime.utcnow
+        default=datetime.now(timezone.utc)
+    )
+
+    session = relationship(
+        "ChatSession",
+        back_populates="messages"
     )

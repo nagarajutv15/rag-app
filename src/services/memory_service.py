@@ -1,23 +1,45 @@
-from datetime import datetime
-
+import logging
+from datetime import datetime, timezone
+from sqlalchemy.exc import SQLAlchemyError
 from src.models.chat_session import ChatSession
 from src.models.chat_message import ChatMessage
 
 
+logger = logging.getLogger(__name__)
 
-#----------------------------------------------------------------------------------------------------------#
-# This function creates a new chat session in the database.
+
+# ----------------------------------------------------------------------------------------------------------#
+# Create a new chat session
+# ----------------------------------------------------------------------------------------------------------#
 
 def create_session(db):
-    session = ChatSession()
-    db.add(session)
-    db.commit()
-    db.refresh(session)
-    return session
+
+    try:
+
+        session = ChatSession()
+
+        db.add(session)
+
+        db.commit()
+
+        db.refresh(session)
+
+        logger.info("Chat session created successfully. session_id=%s", session.session_id)
+
+        return session
+
+    except SQLAlchemyError:
+
+        db.rollback()
+
+        logger.exception("Failed to create chat session.")
+
+        raise
 
 
-#----------------------------------------------------------------------------------------------------------#
-# This function saves a chat message to the database and updates the last activity timestamp of the session
+# ----------------------------------------------------------------------------------------------------------#
+# Save a chat message
+# ----------------------------------------------------------------------------------------------------------#
 
 def save_message(
     db,
@@ -25,43 +47,135 @@ def save_message(
     role: str,
     content: str
 ):
-    message = ChatMessage(
-        session_id=session_id,
-        role=role,
-        content=content
-    )
-    db.add(message)
-    session = (
-        db.query(ChatSession)
-        .filter(
-            ChatSession.session_id == session_id
+
+    try:
+
+        message = ChatMessage(
+            session_id=session_id,
+            role=role,
+            content=content
         )
-        .first()
-    )
-    if session:
-        session.last_activity_at = datetime.utcnow()
-    db.commit()
+
+        db.add(message)
+
+        session = (
+            db.query(ChatSession)
+            .filter(
+                ChatSession.session_id == session_id
+            )
+            .first()
+        )
+
+        if session:
+
+            session.last_activity_at = datetime.now(
+                timezone.utc
+            )
+
+        db.commit()
+
+        db.refresh(message)
+
+        logger.info(
+            "Chat message saved. session_id=%s role=%s",
+            session_id,
+            role
+        )
+
+        return message
+
+    except SQLAlchemyError:
+
+        db.rollback()
+
+        logger.exception(
+            "Failed to save chat message. session_id=%s",
+            session_id
+        )
+
+        raise
 
 
-
-#----------------------------------------------------------------------------------------------------------#
-# This function retrieves the chat history for a given session, limited to a specified number of messages.
+# ----------------------------------------------------------------------------------------------------------#
+# Get chat history
+# ----------------------------------------------------------------------------------------------------------#
 
 def get_chat_history(
     db,
     session_id: str,
     limit: int = 10
 ):
-    messages = (
-        db.query(ChatMessage)
+
+    try:
+
+        messages = (
+            db.query(ChatMessage)
             .filter(
                 ChatMessage.session_id == session_id
             )
             .order_by(
-                ChatMessage.created_at.asc()
+                ChatMessage.created_at.desc()
             )
-
+            .limit(limit)
             .all()
-    )
+        )
 
-    return messages[-limit:]
+        logger.info(
+            "Retrieved %d chat messages. session_id=%s",
+            len(messages),
+            session_id
+        )
+
+        return list(reversed(messages))
+
+    except SQLAlchemyError:
+
+        logger.exception(
+            "Failed to retrieve chat history. session_id=%s",
+            session_id
+        )
+
+        raise
+
+
+# ----------------------------------------------------------------------------------------------------------#
+# Delete chat history for a session
+# ----------------------------------------------------------------------------------------------------------#
+
+def delete_chat_history(
+    db,
+    session_id: str
+):
+
+    try:
+
+        deleted = (
+            db.query(ChatMessage)
+            .filter(
+                ChatMessage.session_id == session_id
+            )
+            .delete(
+                synchronize_session=False
+            )
+        )
+
+        db.commit()
+
+        logger.info(
+            "Deleted %d chat messages. session_id=%s",
+            deleted,
+            session_id
+        )
+
+        return deleted > 0
+
+    except SQLAlchemyError:
+
+        db.rollback()
+
+        logger.exception(
+            "Failed to delete chat history. session_id=%s",
+            session_id
+        )
+
+        raise

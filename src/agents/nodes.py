@@ -1,6 +1,6 @@
 from src.agents.router import route_question
 
-from src.agents.tools.sql_tool import SQLTool
+from src.agents.tools.postgres_tool import SQLTool
 from src.agents.tools.rag_tool import RAGTool
 from src.agents.tools.web_tool import WebTool
 from src.agents.tools.memory_tool import MemoryTool
