@@ -1,6 +1,6 @@
 from rank_bm25 import BM25Okapi
 from src.models.document_schema import DocumentMetadata
-from src.rag.ingestion.document_ingestion import (
+from src.ingestion.document_ingestion import (
     load_document,
     chunk_documents
 )
@@ -40,8 +40,7 @@ def build_bm25_index(chunks):
 
 def bm25_search(
     query: str,
-    department_id: str,
-    top_k: int = 5
+    top_k: int = 10
 ):
     
     global BM25_INDEX
@@ -58,9 +57,6 @@ def bm25_search(
 
     for chunk, score in zip(BM25_DOCUMENTS, scores):
 
-        if (chunk.metadata.get("department_id")!= department_id):
-            continue
-
         scored_docs.append((chunk, score))
 
 
@@ -73,7 +69,6 @@ def bm25_search(
         results.append({
             "chunk_id": chunk.metadata.get("chunk_id"),
             "document_id": chunk.metadata.get("document_id"),
-            "department_id": chunk.metadata.get("department_id"),
             "file_name": chunk.metadata.get("file_name"),
             "version": chunk.metadata.get("version"),
             "is_active": chunk.metadata.get("is_active"),
@@ -117,7 +112,6 @@ def rebuild_bm25_index(db):
 
                 chunk.metadata.update({
                     "document_id":document.document_id,
-                    "department_id":document.department_id,
                     "file_name":document.file_name,
                     "version":document.version,
                     "is_active":document.is_active

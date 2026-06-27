@@ -2,7 +2,7 @@ from typing import List
 from uuid import uuid4
 from langchain_core.documents import Document
 from qdrant_client.models import PointStruct
-from src.rag.vectorstore.qdrant_connection import (
+from src.vectorstore.qdrant_connection import (
     QDRANT_CLIENT,
     QDRANT_COLLECTION
 )
@@ -59,7 +59,6 @@ def build_payload(
     return {
         "chunk_id": metadata.get("chunk_id"),
         "document_id": metadata.get("document_id"),
-        "department_id": metadata.get("department_id"),
         "file_name": metadata.get("file_name"),
         "version": metadata.get("version", 1),
         "is_active": metadata.get("is_active", True),

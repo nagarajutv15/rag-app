@@ -1,16 +1,15 @@
 from fastapi import FastAPI
 from src.api.routes import router
-from src.models.database import Base, engine
-from src.models import SessionLocal
-from src.rag.vectorstore.bm25_store import rebuild_bm25_index
-from src.models.organization_seed import seed_organization_data
-from src.api.organization import router as organization_router
-from src.agents.graph_builder import graph
+from src.models.database import Base, engine,SessionLocal
+from src.vectorstore.bm25_store import rebuild_bm25_index
+from src.agents.agent import Agent
+from src.api.chat import router as chat_router
+
 
 app = FastAPI()
 
 app.include_router(router)
-app.include_router(organization_router)
+app.include_router(chat_router)
 
 Base.metadata.create_all(bind=engine)
 
@@ -22,15 +21,9 @@ async def startup():
 
     try:
         rebuild_bm25_index(db)
-        seed_organization_data(db)
 
     finally:
         db.close()
 
-    result = graph.invoke(
-        {
-            "question": "Who reports to John Smith?"
-        }
-    )
 
-    print(result)
+        
