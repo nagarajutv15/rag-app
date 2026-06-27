@@ -22,13 +22,13 @@ class ChatSession(Base):
 
     created_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc)
+        default=lambda: datetime.now(timezone.utc)
     )
 
     last_activity_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc)
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
     )
 
     messages = relationship(

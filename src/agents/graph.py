@@ -1,82 +1,56 @@
 from langgraph.graph import StateGraph
-from langgraph.graph import END
+from langgraph.graph import START, END
 
 from src.agents.state import AgentState
+from src.agents.planner import planner
+from src.agents.retrieval import retrieval_node
+from src.agents.generator import generator
+from src.agents.evaluator import evaluator
+from src.agents.rewriter import rewriter
+from src.agents.routing import should_retry
 
-from src.agents.nodes import (
-    router_node,
-    sql_node,
-    rag_node,
-    web_node,
-    memory_node
-)
 
 builder = StateGraph(AgentState)
 
-builder.add_node(
-    "router",
-    router_node
-)
+# ---------------------------------------------------------------------
+# Nodes
+# ---------------------------------------------------------------------
 
-builder.add_node(
-    "sql",
-    sql_node
-)
+builder.add_node("planner", planner,)
 
-builder.add_node(
-    "rag",
-    rag_node
-)
+builder.add_node("retrieval", retrieval_node,)
 
-builder.add_node(
-    "web",
-    web_node
-)
+builder.add_node("generator", generator,)
 
-builder.add_node(
-    "memory",
-    memory_node
-)
+builder.add_node("evaluator", evaluator,)
 
-builder.set_entry_point(
-    "router"
-)
+builder.add_node("rewriter", rewriter,)
 
+# ---------------------------------------------------------------------
+# Flow
+# ---------------------------------------------------------------------
 
-def route(state):
+builder.add_edge(START, "planner",)
 
-    return state["source"]
+builder.add_edge("planner", "retrieval",)
 
+builder.add_edge("retrieval", "generator",)
+
+builder.add_edge("generator", "evaluator",)
+
+# ---------------------------------------------------------------------
+# Conditional Routing
+# ---------------------------------------------------------------------
 
 builder.add_conditional_edges(
-    "router",
-    route,
+    "evaluator",
+    should_retry,
     {
-        "sql": "sql",
-        "rag": "rag",
-        "web": "web",
-        "memory": "memory"
-    }
+        "rewrite": "rewriter",
+        "end": END,
+    },
 )
 
-builder.add_edge(
-    "sql",
-    END
-)
-
-builder.add_edge(
-    "rag",
-    END
-)
-
-builder.add_edge(
-    "web",
-    END
-)
-
-builder.add_edge(
-    "memory",
-    END
-)
+builder.add_edge("rewriter", "planner",)
 
 graph = builder.compile()

@@ -1,8 +1,6 @@
 from sqlalchemy.orm import Session
 from src.models.database import get_db
-from src.rag.adaptive.query_classifier import classify_query
 from src.services.document_service import process_document_upload
-from src.services.chat_service import ask_rag_question
 from src.services.memory_service import create_session
 from fastapi import (
     APIRouter,
@@ -13,7 +11,6 @@ from fastapi import (
 )
 
 
-
 router = APIRouter()
 
 #----------------------------------------------------------------------------------------------------------#
@@ -21,36 +18,17 @@ router = APIRouter()
 
 @router.post("/documents/upload")
 def upload_document(
-    department_id: str = Form(...),
     source: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
 
     return process_document_upload(
-        department_id=department_id,
         source=source,
         file=file,
         db=db
     )
 
-
-
-#----------------------------------------------------------------------------------------------------------#
-# This Route is used to ask a question to the RAG system. It takes the session_id and query as input and returns the answer.
-
-@router.post("/ask")
-def ask_question(
-    session_id: str = Form(...),
-    query: str = Form(...),
-    db: Session = Depends(get_db)
-):
-
-    return ask_rag_question(
-        query=query,
-        session_id=session_id,
-        db=db
-    )
 
 
 #----------------------------------------------------------------------------------------------------------#

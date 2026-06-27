@@ -112,26 +112,24 @@ def load_document(file_path: str):
 
 def save_document(
     file: UploadFile,
-    department_id: str
 ):
-    
-    department_folder = os.path.join(
-        UPLOAD_FOLDER,
-        department_id
-    )
 
     os.makedirs(
-        department_folder,
+        UPLOAD_FOLDER,
         exist_ok=True
     )
 
+    safe_name = os.path.basename(file.filename)
+
+    unique_name = f"{uuid.uuid4()}_{safe_name}"
+
     file_path = os.path.join(
-        department_folder, 
-        file.filename
+        UPLOAD_FOLDER,
+        unique_name
     )
 
     with open(file_path, "wb") as buffer:
-        
+
         shutil.copyfileobj(
             file.file,
             buffer

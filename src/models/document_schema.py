@@ -30,12 +30,7 @@ class DocumentMetadata(Base):
         String,
         nullable=False
     )
-
-    department_id = Column(
-        String,
-        nullable=False
-    )
-
+    
     version = Column(
         Integer,
         default=1

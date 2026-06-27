@@ -17,11 +17,8 @@ def create_session(db):
     try:
 
         session = ChatSession()
-
         db.add(session)
-
         db.commit()
-
         db.refresh(session)
 
         logger.info("Chat session created successfully. session_id=%s", session.session_id)
@@ -31,9 +28,7 @@ def create_session(db):
     except SQLAlchemyError:
 
         db.rollback()
-
         logger.exception("Failed to create chat session.")
-
         raise
 
 
@@ -66,14 +61,13 @@ def save_message(
             .first()
         )
 
-        if session:
+        if session is None:
+            raise ValueError("Session not found")
 
-            session.last_activity_at = datetime.now(
-                timezone.utc
-            )
+        if session:
+            session.last_activity_at = datetime.now(timezone.utc)
 
         db.commit()
-
         db.refresh(message)
 
         logger.info(
@@ -92,7 +86,6 @@ def save_message(
             "Failed to save chat message. session_id=%s",
             session_id
         )
-
         raise
 
 
@@ -126,15 +119,20 @@ def get_chat_history(
             session_id
         )
 
-        return list(reversed(messages))
-
+        return [
+            {
+                "role": msg.role,
+                "content": msg.content
+            }
+            for msg in reversed(messages)
+        ]
+    
     except SQLAlchemyError:
 
         logger.exception(
             "Failed to retrieve chat history. session_id=%s",
             session_id
         )
-
         raise
 
 
@@ -172,10 +170,8 @@ def delete_chat_history(
     except SQLAlchemyError:
 
         db.rollback()
-
         logger.exception(
             "Failed to delete chat history. session_id=%s",
             session_id
         )
-
         raise
