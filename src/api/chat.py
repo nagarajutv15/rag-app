@@ -2,7 +2,7 @@ import time
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-
+from fastapi.responses import StreamingResponse
 from src.models.database import get_db
 from src.models.chat_request import ChatRequest
 from src.models.chat_response import ChatResponse
@@ -57,3 +57,27 @@ async def chat(
         logger.exception("Chat Request Failed")
 
         raise
+
+
+
+
+
+@router.post("/stream")
+async def chat_stream(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+):
+
+    async def event_stream():
+
+        async for token in Agent.execute_stream(
+            question=request.question,
+            session_id=request.session_id,
+            db=db,
+        ):
+            yield token
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/plain",
+    )
