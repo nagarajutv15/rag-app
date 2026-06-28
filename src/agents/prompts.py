@@ -265,3 +265,38 @@ Rules
 7. Keep the rewritten query concise.
 8. Return ONLY the rewritten question.
 """
+
+
+
+
+#--------------------------------------------------------------------------------------------------------#
+
+
+
+
+
+SUMMARY_PROMPT = """
+You are a Conversation Memory Agent.
+
+Summarize the conversation for future AI interactions.
+
+Keep the summary under 250 words.
+
+Include:
+
+- User preferences
+- Important facts shared by the user
+- Decisions made
+- Problems already solved
+- Open questions
+- Current goals and tasks
+
+Do NOT include:
+
+- Greetings
+- Small talk
+- Repeated information
+- Filler conversation
+
+Write a concise summary that helps another AI assistant continue the conversation naturally.
+"""

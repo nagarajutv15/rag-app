@@ -1,10 +1,20 @@
+import time
 from concurrent.futures import ThreadPoolExecutor
+
 from src.tools.registry import TOOL_REGISTRY
+from src.utils.logger import logger
 
 
-def retrieval_node(state):
+async def retrieval_node(state):
 
-    contexts = {}
+    start = time.perf_counter()
+
+    logger.info(
+        "Retrieval Started | Tools=%s",
+        state["tools"],
+    )
+
+    result = {}
 
     def execute(tool_name):
 
@@ -27,8 +37,39 @@ def retrieval_node(state):
 
         for future in futures:
 
-            tool_name, result = future.result()
+            tool_name, tool_result = future.result()
 
-            contexts[f"{tool_name}_context"] = result
+            result[f"{tool_name}_context"] = tool_result["context"]
 
-    return contexts
+            result[f"{tool_name}_sources"] = tool_result["sources"]
+
+    latency = (time.perf_counter() - start) * 1000
+
+    logger.info(
+        "Retrieval Completed | Time=%.2f ms",
+        latency,
+    )
+
+    return {
+
+        **result,
+
+        "observability": {
+
+            **state.get("observability", {}),
+
+            "retrieval": {
+
+                "memory": bool(result.get("memory_context")),
+
+                "rag": bool(result.get("rag_context")),
+
+                "web": bool(result.get("web_context")),
+
+                "latency_ms": round(latency, 2),
+
+            }
+
+        }
+
+    }

@@ -1,18 +1,17 @@
 import json
+import time
 
-from langchain_openai import ChatOpenAI
-
+from src.llm.llm_service import llm
 from src.agents.prompts import EVALUATOR_PROMPT
 from src.agents.state import AgentState
+from src.utils.logger import logger
 
 
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0,
-)
+async def evaluator(state: AgentState):
 
+    start = time.perf_counter()
 
-def evaluator(state: AgentState):
+    logger.info("Evaluator Started")
 
     prompt = EVALUATOR_PROMPT.format(
         question=state["question"],
@@ -22,7 +21,7 @@ def evaluator(state: AgentState):
         answer=state["answer"],
     )
 
-    response = llm.invoke(
+    response = await llm.ainvoke(
         [
             ("system", prompt),
         ]
@@ -36,6 +35,23 @@ def evaluator(state: AgentState):
 
     evaluation = json.loads(raw)
 
+    latency = (time.perf_counter() - start) * 1000
+
+    logger.info(
+        "Evaluator Completed | Passed=%s | Time=%.2f ms",
+        evaluation["is_answer_sufficient"],
+        latency,
+    )
+
     return {
-        "evaluation": evaluation
+        "evaluation": evaluation,
+        "observability": {
+            **state.get("observability", {}),
+            "evaluation": {
+                "passed": evaluation["is_answer_sufficient"],
+                "reason": evaluation["reason"],
+                "latency_ms": round(latency, 2),
+            }
+        }
     }
+

@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
@@ -6,36 +7,57 @@ from langchain_openai import ChatOpenAI
 load_dotenv()
 
 
-# Set the LLM model to be used for generating responses. The default is "gpt-4o-mini"
+# ---------------------------------------------------------
+# LLM Configuration
+# ---------------------------------------------------------
+
 LLM_MODEL = os.getenv(
     "LLM_MODEL",
-    "gpt-4o-mini"
+    "gpt-4o-mini",
 )
 
-# Set the temperature for the LLM, which controls the randomness of the output. A lower value makes the output more deterministic, while a higher value increases creativity.
 TEMPERATURE = float(
     os.getenv(
         "LLM_TEMPERATURE",
-        "0.3"
+        "0.3",
     )
 )
 
-# Create a global instance of the LLM for reuse across the application
+# ---------------------------------------------------------
+# Global LLM Instance
+# ---------------------------------------------------------
+
 llm = ChatOpenAI(
     model=LLM_MODEL,
-    temperature=TEMPERATURE
+    temperature=TEMPERATURE,
 )
 
 
-#----------------------------------------------------------------------------------------------------------#
-# This function generates a response from the LLM based on the provided prompt.
+# ---------------------------------------------------------
+# Async Response Generator
+# ---------------------------------------------------------
 
-def generate_response(
-    prompt: str
+async def generate_response(
+    prompt: str,
+) -> str:
+
+    response = await llm.ainvoke(
+        prompt,
+    )
+
+    return response.content
+
+
+# ---------------------------------------------------------
+# Optional Sync Version
+# ---------------------------------------------------------
+
+def generate_response_sync(
+    prompt: str,
 ) -> str:
 
     response = llm.invoke(
-        prompt
+        prompt,
     )
 
     return response.content

@@ -28,3 +28,5 @@ class AgentState(TypedDict):
     evaluation: EvaluationResult
 
     retry_count: int
+
+    observability: dict

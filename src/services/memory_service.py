@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy.exc import SQLAlchemyError
 from src.models.chat_session import ChatSession
 from src.models.chat_message import ChatMessage
+from src.services.summary_service import summarize_conversation
 
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,11 @@ def save_message(
         db.commit()
         db.refresh(message)
 
+        maybe_update_summary(
+            db,
+            session_id,
+        )
+
         logger.info(
             "Chat message saved. session_id=%s role=%s",
             session_id,
@@ -96,10 +102,18 @@ def save_message(
 def get_chat_history(
     db,
     session_id: str,
-    limit: int = 10
+    limit: int = 5,
 ):
 
     try:
+
+        session = (
+            db.query(ChatSession)
+            .filter(
+                ChatSession.session_id == session_id
+            )
+            .first()
+        )
 
         messages = (
             db.query(ChatMessage)
@@ -116,23 +130,37 @@ def get_chat_history(
         logger.info(
             "Retrieved %d chat messages. session_id=%s",
             len(messages),
-            session_id
+            session_id,
         )
 
-        return [
-            {
-                "role": msg.role,
-                "content": msg.content
-            }
-            for msg in reversed(messages)
-        ]
-    
+        return {
+
+            "summary": (
+                session.conversation_summary
+                if session and session.conversation_summary
+                else ""
+            ),
+
+            "messages": [
+
+                {
+                    "role": msg.role,
+                    "content": msg.content,
+                }
+
+                for msg in reversed(messages)
+
+            ]
+
+        }
+
     except SQLAlchemyError:
 
         logger.exception(
             "Failed to retrieve chat history. session_id=%s",
-            session_id
+            session_id,
         )
+
         raise
 
 
@@ -175,3 +203,106 @@ def delete_chat_history(
             session_id
         )
         raise
+
+
+
+# ----------------------------------------------------------------------------------------------------------#
+# update chat history 
+# ----------------------------------------------------------------------------------------------------------#
+
+
+
+
+def update_conversation_summary(
+    db,
+    session_id: str,
+):
+
+    try:
+
+        session = (
+            db.query(ChatSession)
+            .filter(
+                ChatSession.session_id == session_id
+            )
+            .first()
+        )
+
+        if session is None:
+            return
+
+        messages = (
+            db.query(ChatMessage)
+            .filter(
+                ChatMessage.session_id == session_id
+            )
+            .order_by(
+                ChatMessage.created_at.asc()
+            )
+            .all()
+        )
+
+        history = "\n".join(
+            f"{message.role}: {message.content}"
+            for message in messages
+        )
+
+        summary = summarize_conversation(
+            history
+        ).strip()
+
+        # Skip empty summaries
+        if not summary:
+            return
+
+        session.conversation_summary = summary
+
+        db.commit()
+
+        logger.info(
+            "Conversation summary updated | Session=%s | Messages=%d | Summary Length=%d",
+            session_id,
+            len(messages),
+            len(summary),
+        )
+
+    except Exception:
+
+        db.rollback()
+
+        logger.exception(
+            "Failed to update conversation summary. session_id=%s",
+            session_id,
+        )
+
+# ----------------------------------------------------------------------------------------------------------#
+# maybe_update_summary chat history 
+# ----------------------------------------------------------------------------------------------------------#
+
+
+
+def maybe_update_summary(
+    db,
+    session_id: str,
+):
+
+    count = (
+        db.query(ChatMessage)
+        .filter(
+            ChatMessage.session_id == session_id
+        )
+        .count()
+    )
+
+    if count > 0 and count % 10 == 0:
+        
+        logger.info(
+            "Updating conversation summary. session_id=%s message_count=%d",
+            session_id,
+            count,
+        )
+                
+        update_conversation_summary(
+            db,
+            session_id,
+        )
