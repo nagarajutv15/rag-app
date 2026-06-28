@@ -61,7 +61,6 @@ async def chat(
 
 
 
-
 @router.post("/stream")
 async def chat_stream(
     request: ChatRequest,
@@ -75,9 +74,15 @@ async def chat_stream(
             session_id=request.session_id,
             db=db,
         ):
-            yield token
+            yield f"data: {token}\n\n"
+
+        yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         event_stream(),
-        media_type="text/plain",
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
     )

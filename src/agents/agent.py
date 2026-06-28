@@ -9,6 +9,7 @@ from src.utils.logger import logger
 from src.agents.planner import planner
 from src.agents.retrieval import retrieval_node
 
+
 class Agent:
 
     @staticmethod
@@ -56,6 +57,8 @@ class Agent:
             "rag_context": "",
 
             "web_context": "",
+
+            "llm_context": "",
 
             "answer": "",
 
@@ -107,10 +110,6 @@ class Agent:
             "answer": result["answer"],
 
         }
-    
-
-
-
 
     @staticmethod
     async def execute_stream(
@@ -154,6 +153,8 @@ class Agent:
             "rag_context": "",
 
             "web_context": "",
+
+            "llm_context": "",
 
             "answer": "",
 

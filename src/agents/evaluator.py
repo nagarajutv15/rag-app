@@ -18,6 +18,7 @@ async def evaluator(state: AgentState):
         memory=state.get("memory_context", ""),
         rag=state.get("rag_context", ""),
         web=state.get("web_context", ""),
+        llm=state.get("llm_context", ""),
         answer=state["answer"],
     )
 
@@ -54,4 +55,3 @@ async def evaluator(state: AgentState):
             }
         }
     }
-

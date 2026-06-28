@@ -1,3 +1,5 @@
+import asyncio
+import inspect
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -16,32 +18,36 @@ async def retrieval_node(state):
 
     result = {}
 
-    def execute(tool_name):
+    async def execute(tool_name):
 
         tool = TOOL_REGISTRY[tool_name]
 
-        return (
-            tool_name,
-            tool.execute(state),
-        )
+        if inspect.iscoroutinefunction(tool.execute):
 
-    with ThreadPoolExecutor() as executor:
+            tool_result = await tool.execute(state)
 
-        futures = [
-            executor.submit(
-                execute,
-                tool_name,
+        else:
+
+            tool_result = await asyncio.to_thread(
+                tool.execute,
+                state,
             )
-            for tool_name in state["tools"]
-        ]
 
-        for future in futures:
+        return tool_name, tool_result
 
-            tool_name, tool_result = future.result()
+    tasks = [
 
-            result[f"{tool_name}_context"] = tool_result["context"]
+        execute(tool_name)
 
-            result[f"{tool_name}_sources"] = tool_result["sources"]
+        for tool_name in state["tools"]
+
+    ]
+
+    for tool_name, tool_result in await asyncio.gather(*tasks):
+
+        result[f"{tool_name}_context"] = tool_result["context"]
+
+        result[f"{tool_name}_sources"] = tool_result["sources"]
 
     latency = (time.perf_counter() - start) * 1000
 
@@ -65,6 +71,8 @@ async def retrieval_node(state):
                 "rag": bool(result.get("rag_context")),
 
                 "web": bool(result.get("web_context")),
+
+                "llm": bool(result.get("llm_context")),
 
                 "latency_ms": round(latency, 2),
 
