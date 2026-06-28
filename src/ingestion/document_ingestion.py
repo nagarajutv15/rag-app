@@ -1,67 +1,88 @@
-import uuid
 import os
 import shutil
-from fastapi import UploadFile
+import time
+import uuid
+from pathlib import Path
+from typing import List
+
+from dotenv import load_dotenv
+from fastapi import HTTPException, UploadFile
 from langchain_community.document_loaders import (
+    Docx2txtLoader,
     PyPDFLoader,
     TextLoader,
-    Docx2txtLoader
 )
-from fastapi import HTTPException
-from typing import List
-from dotenv import load_dotenv
 from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from src.utils.logger import logger
 
 
 load_dotenv()
 
 
-UPLOAD_FOLDER = "uploads"
+# ---------------------------------------------------------
+# Upload Directory
+# ---------------------------------------------------------
 
-# Create the uploads directory if it doesn't exist
-os.makedirs(
-    UPLOAD_FOLDER,
-    exist_ok=True
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+UPLOAD_DIR = BASE_DIR / "uploads"
+
+UPLOAD_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
 )
 
-# chunk size
+# ---------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------
+
 CHUNK_SIZE = int(
     os.getenv(
         "CHUNK_SIZE",
-        "1000"
+        "1000",
     )
 )
 
-# chunk overlap
 CHUNK_OVERLAP = int(
     os.getenv(
         "CHUNK_OVERLAP",
-        "200"
+        "200",
     )
 )
 
-# embedding model
 EMBEDDING_MODEL = os.getenv(
     "EMBEDDING_MODEL",
     "text-embedding-3-small",
 )
 
-# embedding batch size
-EMBEDDING_BATCH_SIZE = int(os.getenv(
-    "EMBEDDING_BATCH_SIZE",
-    "100",
-))
+EMBEDDING_BATCH_SIZE = int(
+    os.getenv(
+        "EMBEDDING_BATCH_SIZE",
+        "100",
+    )
+)
+
+_embedding_model = None
 
 
-#----------------------------------------------------------------------------------------------------------#
-# This function loads a document based on its file type (PDF, TXT, DOCX) and returns the content as a list of documents.
+# ----------------------------------------------------------------------------------------------------------
+# Load Document
+# ----------------------------------------------------------------------------------------------------------
 
 def load_document(file_path: str):
 
+    start = time.perf_counter()
+
+    logger.info(
+        "Loading Document | File=%s",
+        file_path,
+    )
+
     try:
+
         if file_path.endswith(".pdf"):
 
             loader = PyPDFLoader(file_path)
@@ -70,7 +91,7 @@ def load_document(file_path: str):
 
             loader = TextLoader(
                 file_path,
-                encoding="utf-8"
+                encoding="utf-8",
             )
 
         elif file_path.endswith(".docx"):
@@ -81,7 +102,7 @@ def load_document(file_path: str):
 
             raise HTTPException(
                 status_code=400,
-                detail="Only PDF, TXT, and DOCX files are supported"
+                detail="Only PDF, TXT and DOCX files are supported.",
             )
 
         documents = loader.load()
@@ -90,60 +111,81 @@ def load_document(file_path: str):
 
             raise HTTPException(
                 status_code=400,
-                detail="No content found in document"
+                detail="No content found in document.",
             )
+
+        latency = (time.perf_counter() - start) * 1000
+
+        logger.info(
+            "Document Loaded | Pages=%d | Time=%.2f ms",
+            len(documents),
+            latency,
+        )
 
         return documents
 
     except HTTPException:
+
         raise
 
     except Exception as e:
 
+        logger.exception(
+            "Document Loading Failed | File=%s",
+            file_path,
+        )
+
         raise HTTPException(
             status_code=500,
-            detail=f"Document loading failed: {str(e)}"
+            detail=f"Document loading failed: {str(e)}",
         )
-    
 
 
-#----------------------------------------------------------------------------------------------------------#
-# This function saves an uploaded document to a specific department folder and returns the file path.   
+# ----------------------------------------------------------------------------------------------------------
+# Save Document
+# ----------------------------------------------------------------------------------------------------------
 
 def save_document(
     file: UploadFile,
 ):
 
-    os.makedirs(
-        UPLOAD_FOLDER,
-        exist_ok=True
+    start = time.perf_counter()
+
+    logger.info(
+        "Saving Document | File=%s",
+        file.filename,
     )
 
     safe_name = os.path.basename(file.filename)
 
     unique_name = f"{uuid.uuid4()}_{safe_name}"
 
-    file_path = os.path.join(
-        UPLOAD_FOLDER,
-        unique_name
-    )
+    file_path = UPLOAD_DIR / unique_name
 
     with open(file_path, "wb") as buffer:
 
         shutil.copyfileobj(
             file.file,
-            buffer
+            buffer,
         )
 
-    return file_path
+    latency = (time.perf_counter() - start) * 1000
+
+    logger.info(
+        "Document Saved | Path=%s | Time=%.2f ms",
+        file_path,
+        latency,
+    )
+
+    return str(file_path)
 
 
-#----------------------------------------------------------------------------------------------------------#
-# This function chunks a list of documents into smaller pieces based on the specified chunk size and overlap.
-
+# ----------------------------------------------------------------------------------------------------------
+# Chunk Documents
+# ----------------------------------------------------------------------------------------------------------
 
 def chunk_documents(
-    documents: List[Document]
+    documents: List[Document],
 ) -> List[Document]:
 
     if not documents:
@@ -157,8 +199,8 @@ def chunk_documents(
             "\n",
             ". ",
             " ",
-            ""
-        ]
+            "",
+        ],
     )
 
     chunks = splitter.split_documents(documents)
@@ -172,31 +214,62 @@ def chunk_documents(
     return chunks
 
 
+# ----------------------------------------------------------------------------------------------------------
+# Embedding Model
+# ----------------------------------------------------------------------------------------------------------
 
-#----------------------------------------------------------------------------------------------------------#
-# This Gives us the embedding model instance configured with the specified model name and batch size for generating embeddings.
+
+
 
 def get_embedding_model():
-    return OpenAIEmbeddings(
-        model=EMBEDDING_MODEL,
-        chunk_size=EMBEDDING_BATCH_SIZE,
-    )
+
+    global _embedding_model
+
+    if _embedding_model is None:
+
+        _embedding_model = OpenAIEmbeddings(
+            model=EMBEDDING_MODEL,
+            chunk_size=EMBEDDING_BATCH_SIZE,
+        )
+
+    return _embedding_model
 
 
+# ----------------------------------------------------------------------------------------------------------
+# Generate Embeddings
+# ----------------------------------------------------------------------------------------------------------
 
-#----------------------------------------------------------------------------------------------------------#
-# This function generates embeddings for a list of document chunks using the specified embedding model.
-
-def generate_embeddings(chunks: List[Document]):
+def generate_embeddings(
+    chunks: List[Document],
+):
 
     if not chunks:
         return []
-    
+
+    start = time.perf_counter()
+
+    logger.info(
+        "Generating Embeddings | Chunks=%d",
+        len(chunks),
+    )
+
     embeddings_model = get_embedding_model()
 
-    texts = [chunk.page_content for chunk in chunks]
+    texts = [
+        chunk.page_content
+        for chunk in chunks
+    ]
 
-    vectors = embeddings_model.embed_documents(texts=texts)
+    vectors = embeddings_model.embed_documents(
+        texts=texts,
+    )
+
+    latency = (time.perf_counter() - start) * 1000
+
+    logger.info(
+        "Embeddings Generated | Vectors=%d | Time=%.2f ms",
+        len(vectors),
+        latency,
+    )
 
     return vectors
-

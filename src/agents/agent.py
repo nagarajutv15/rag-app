@@ -1,22 +1,31 @@
-from src.agents.graph import graph
+import time
 
+from src.agents.graph import graph
 from src.services.memory_service import (
     create_session,
     save_message,
 )
+from src.utils.logger import logger
 
 
 class Agent:
 
     @staticmethod
-    def execute(
+    async def execute(
         question: str,
         session_id: str | None,
         db,
     ):
 
+        start = time.perf_counter()
+
+        logger.info(
+            "Agent Started | Question=%s",
+            question,
+        )
+
         # ---------------------------------------------------------
-        # Create Session if Required
+        # Create Session
         # ---------------------------------------------------------
 
         if not session_id:
@@ -26,7 +35,7 @@ class Agent:
             session_id = session.session_id
 
         # ---------------------------------------------------------
-        # Initial Agent State
+        # Initial State
         # ---------------------------------------------------------
 
         state = {
@@ -54,14 +63,16 @@ class Agent:
                 "reason": ""
             },
 
-            "retry_count": 0
+            "retry_count": 0,
+
+            "observability": {},
         }
 
         # ---------------------------------------------------------
-        # Execute Graph
+        # Execute Graph (ASYNC)
         # ---------------------------------------------------------
 
-        result = graph.invoke(state)
+        result = await graph.ainvoke(state)
 
         # ---------------------------------------------------------
         # Save Conversation
@@ -81,14 +92,17 @@ class Agent:
             content=result["answer"],
         )
 
-        # ---------------------------------------------------------
-        # Response
-        # ---------------------------------------------------------
+        latency = (time.perf_counter() - start) * 1000
+
+        logger.info(
+            "Agent Completed | Time=%.2f ms",
+            latency,
+        )
 
         return {
 
             "session_id": session_id,
 
-            "answer": result["answer"]
+            "answer": result["answer"],
 
         }

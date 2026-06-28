@@ -1,7 +1,8 @@
 from sqlalchemy import (
     Column,
     String,
-    DateTime
+    DateTime,
+    Text
 )
 from datetime import datetime
 from uuid import uuid4
@@ -35,4 +36,9 @@ class ChatSession(Base):
         "ChatMessage",
         back_populates="session",
         cascade="all, delete-orphan"
+    )
+
+    conversation_summary = Column(
+        Text,
+        nullable=True
     )

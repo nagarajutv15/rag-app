@@ -1,46 +1,105 @@
 import os
+
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
+    Distance,
     VectorParams,
-    Distance
 )
+
+from src.utils.logger import logger
+
 
 load_dotenv()
 
-# Initialize and manage Qdrant vector database connection.
 
-QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
-QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "organization")
-VECTOR_SIZE = int(os.getenv("VECTOR_SIZE", 1536))
+# ---------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------
 
-
-QDRANT_CLIENT = QdrantClient(
-    host = QDRANT_HOST,
-    port = QDRANT_PORT,
-    check_compatibility = False
+QDRANT_HOST = os.getenv(
+    "QDRANT_HOST",
+    "localhost",
 )
 
-collections = QDRANT_CLIENT.get_collections()
+QDRANT_PORT = int(
+    os.getenv(
+        "QDRANT_PORT",
+        6333,
+    )
+)
 
-existing_names = [collection.name for collection in collections.collections]
+QDRANT_COLLECTION = os.getenv(
+    "QDRANT_COLLECTION",
+    "organization",
+)
 
-# Creates a collection if it doesn't exist, or connects to an existing one.
+VECTOR_SIZE = int(
+    os.getenv(
+        "VECTOR_SIZE",
+        1536,
+    )
+)
 
-if QDRANT_COLLECTION not in existing_names:
+logger.info(
+    "Connecting to Qdrant | Host=%s | Port=%d",
+    QDRANT_HOST,
+    QDRANT_PORT,
+)
 
-    QDRANT_CLIENT.create_collection(
-        collection_name=QDRANT_COLLECTION,
-        vectors_config=VectorParams(
-            size=VECTOR_SIZE,
-            distance=Distance.COSINE
-        )
+try:
+
+    # ---------------------------------------------------------
+    # Connect
+    # ---------------------------------------------------------
+
+    QDRANT_CLIENT = QdrantClient(
+        host=QDRANT_HOST,
+        port=QDRANT_PORT,
+        check_compatibility=False,
     )
 
-    print( f"{QDRANT_COLLECTION} created")
+    logger.info(
+        "Connected to Qdrant"
+    )
 
-else:
+    # ---------------------------------------------------------
+    # Collection Check
+    # ---------------------------------------------------------
 
-    print(f"{QDRANT_COLLECTION} already exists")
-    
+    collections = QDRANT_CLIENT.get_collections()
+
+    existing_names = [
+        collection.name
+        for collection in collections.collections
+    ]
+
+    if QDRANT_COLLECTION not in existing_names:
+
+        QDRANT_CLIENT.create_collection(
+            collection_name=QDRANT_COLLECTION,
+            vectors_config=VectorParams(
+                size=VECTOR_SIZE,
+                distance=Distance.COSINE,
+            ),
+        )
+
+        logger.info(
+            "Qdrant Collection Created | Collection=%s",
+            QDRANT_COLLECTION,
+        )
+
+    else:
+
+        logger.info(
+            "Qdrant Collection Exists | Collection=%s",
+            QDRANT_COLLECTION,
+        )
+
+except Exception:
+
+    logger.exception(
+        "Failed to Initialize Qdrant"
+    )
+
+    raise

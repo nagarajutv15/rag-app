@@ -1,6 +1,9 @@
 import os
+import time
 
 from tavily import TavilyClient
+
+from src.utils.logger import logger
 
 
 class WebTool:
@@ -12,30 +15,63 @@ class WebTool:
     @staticmethod
     def execute(state):
 
+        start = time.perf_counter()
+
         query = (
             state.get("rewritten_question")
             or state["question"]
         )
 
-        response = WebTool.client.search(
-            query=query,
-            max_results=5,
+        logger.info(
+            "Web Tool Started | Query=%s",
+            query,
         )
 
-        output = []
+        try:
 
-        for result in response.get("results", []):
-
-            output.append(
-                f"""
-Title: {result.get("title")}
-
-Content:
-{result.get("content")}
-
-Source:
-{result.get("url")}
-"""
+            response = WebTool.client.search(
+                query=query,
+                max_results=5,
             )
 
-        return "\n\n".join(output)
+            results = response.get("results", [])
+
+            latency = (time.perf_counter() - start) * 1000
+
+            logger.info(
+                "Web Tool Completed | Results=%d | Time=%.2f ms",
+                len(results),
+                latency,
+            )
+
+            return {
+
+                "context": "\n\n".join(
+                    f"""
+Title: {r.get('title')}
+
+Content:
+{r.get('content')}
+"""
+                    for r in results
+                ),
+
+                "sources": [
+                    {
+                        "type": "web",
+                        "title": r.get("title"),
+                        "url": r.get("url"),
+                    }
+                    for r in results
+                ]
+
+            }
+
+        except Exception:
+
+            logger.exception(
+                "Web Tool Failed | Query=%s",
+                query,
+            )
+
+            raise

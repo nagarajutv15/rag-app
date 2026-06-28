@@ -1,17 +1,19 @@
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-from src.vectorstore.bm25_store import bm25_search
 from sentence_transformers import CrossEncoder
-from src.ingestion.document_ingestion import get_embedding_model
-from src.vectorstore.qdrant_connection import (
-    QDRANT_CLIENT,
-    QDRANT_COLLECTION
-)
-
 from qdrant_client.models import (
     Filter,
     FieldCondition,
-    MatchValue
+    MatchValue,
+)
+
+from src.ingestion.document_ingestion import get_embedding_model
+from src.utils.logger import logger
+from src.vectorstore.bm25_store import bm25_search
+from src.vectorstore.qdrant_connection import (
+    QDRANT_CLIENT,
+    QDRANT_COLLECTION,
 )
 
 
@@ -20,9 +22,9 @@ reranker = CrossEncoder(
 )
 
 
-# ----------------------------------------------------------------------------------------------------------#
-# Hybrid Search:
-# BM25 + Vector Search (Parallel) + CrossEncoder Reranking
+# ----------------------------------------------------------------------------------------------------------
+# Hybrid Search
+# ----------------------------------------------------------------------------------------------------------
 
 def hybrid_search(
     query: str,
@@ -30,28 +32,27 @@ def hybrid_search(
     min_score: float = 0.0,
 ):
 
-    # Run BM25 and Vector Search in parallel
     with ThreadPoolExecutor(max_workers=2) as executor:
 
         bm25_future = executor.submit(
             bm25_search,
             query=query,
-            top_k=top_k
+            top_k=top_k,
         )
 
         vector_future = executor.submit(
             retrieve_documents,
             query=query,
             top_k=top_k,
-            min_score=min_score
+            min_score=min_score,
         )
 
         bm25_results = bm25_future.result()
+
         vector_results = vector_future.result()
 
     merged_results = {}
 
-    # Merge Vector Results
     for doc in vector_results:
 
         chunk_id = doc.get("chunk_id")
@@ -61,10 +62,9 @@ def hybrid_search(
 
         merged_results[chunk_id] = {
             **doc,
-            "hybrid_score": doc.get("score", 0.0) * 0.7
+            "hybrid_score": doc.get("score", 0.0) * 0.7,
         }
 
-    # Merge BM25 Results
     for doc in bm25_results:
 
         chunk_id = doc.get("chunk_id")
@@ -82,34 +82,38 @@ def hybrid_search(
 
             merged_results[chunk_id] = {
                 **doc,
-                "hybrid_score": doc.get("bm25_score", 0.0) * 0.3
+                "hybrid_score": doc.get("bm25_score", 0.0) * 0.3,
             }
 
     final_results = sorted(
         merged_results.values(),
         key=lambda x: x.get("hybrid_score", 0.0),
-        reverse=True
+        reverse=True,
     )
 
-    reranked_results = rerank(
-        query=query,
-        documents=final_results,
-        top_k=top_k
+    # Run async rerank from sync code
+    reranked_results = asyncio.run(
+        rerank(
+            query=query,
+            documents=final_results,
+            top_k=top_k,
+        )
     )
 
-    print("=" * 60)
-    print(f"Question       : {query}")
-    print(f"BM25 Results   : {len(bm25_results)}")
-    print(f"Vector Results : {len(vector_results)}")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("Question       : %s", query)
+    logger.info("BM25 Results   : %d", len(bm25_results))
+    logger.info("Vector Results : %d", len(vector_results))
+    logger.info("=" * 60)
 
     return reranked_results
 
 
-# ----------------------------------------------------------------------------------------------------------#
+# ----------------------------------------------------------------------------------------------------------
 # CrossEncoder Reranking
+# ----------------------------------------------------------------------------------------------------------
 
-def rerank(
+async def rerank(
     query: str,
     documents: list,
     top_k: int = 5,
@@ -121,30 +125,35 @@ def rerank(
     pairs = [
         (
             query,
-            doc.get("text", "")
+            doc.get("text", ""),
         )
         for doc in documents
     ]
 
-    scores = reranker.predict(pairs)
+    scores = await asyncio.to_thread(
+        reranker.predict,
+        pairs,
+    )
 
     reranked_documents = []
 
     for doc, score in zip(documents, scores):
 
         doc["rerank_score"] = float(score)
+
         reranked_documents.append(doc)
 
     reranked_documents.sort(
         key=lambda x: x["rerank_score"],
-        reverse=True
+        reverse=True,
     )
 
     return reranked_documents[:top_k]
 
 
-# ----------------------------------------------------------------------------------------------------------#
+# ----------------------------------------------------------------------------------------------------------
 # Vector Search
+# ----------------------------------------------------------------------------------------------------------
 
 def retrieve_documents(
     query: str,
@@ -165,7 +174,7 @@ def retrieve_documents(
             must=[
                 FieldCondition(
                     key="is_active",
-                    match=MatchValue(value=True)
+                    match=MatchValue(value=True),
                 )
             ]
         )
@@ -174,7 +183,7 @@ def retrieve_documents(
         collection_name=QDRANT_COLLECTION,
         query_vector=query_vector,
         query_filter=search_filter,
-        limit=top_k
+        limit=top_k,
     )
 
     retrieved_chunks = []
@@ -195,7 +204,7 @@ def retrieve_documents(
                 "version": payload.get("version"),
                 "is_active": payload.get("is_active"),
                 "text": payload.get("text", ""),
-                "score": float(result.score)
+                "score": float(result.score),
             }
         )
 
