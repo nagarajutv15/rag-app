@@ -58,6 +58,15 @@ async def chat(
 
         raise
 
+    finally:
+
+        latency = (time.perf_counter() - start) * 1000
+
+        logger.info(
+            "Chat Request Finished | Time=%.2f ms",
+            latency,
+        )
+
 
 
 
@@ -69,14 +78,44 @@ async def chat_stream(
 
     async def event_stream():
 
-        async for token in Agent.execute_stream(
-            question=request.question,
-            session_id=request.session_id,
-            db=db,
-        ):
-            yield f"data: {token}\n\n"
+        start = time.perf_counter()
 
-        yield "data: [DONE]\n\n"
+        logger.info(
+            "Streaming Chat Started | Session=%s",
+            request.session_id,
+        )
+
+        try:
+
+            async for token in Agent.execute_stream(
+                question=request.question,
+                session_id=request.session_id,
+                db=db,
+            ):
+                yield f"data: {token}\n\n"
+
+            yield "data: [DONE]\n\n"
+
+        except Exception:
+
+            logger.exception(
+                "Streaming Chat Failed | Session=%s",
+                request.session_id,
+            )
+
+            yield "data: ERROR\n\n"
+
+        finally:
+
+            latency = (
+                time.perf_counter() - start
+            ) * 1000
+
+            logger.info(
+                "Streaming Chat Finished | Session=%s | Time=%.2f ms",
+                request.session_id,
+                latency,
+            )
 
     return StreamingResponse(
         event_stream(),

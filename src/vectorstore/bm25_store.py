@@ -25,28 +25,41 @@ def build_bm25_index(chunks):
     global BM25_INDEX
     global BM25_DOCUMENTS
 
-    logger.info(
-        "Building BM25 Index | New Chunks=%d",
-        len(chunks),
-    )
+    try:
 
-    BM25_DOCUMENTS.extend(chunks)
+        logger.info(
+            "Building BM25 Index | New Chunks=%d",
+            len(chunks),
+        )
 
-    tokenized_docs = [
-        chunk.page_content.split()
-        for chunk in BM25_DOCUMENTS
-    ]
+        BM25_DOCUMENTS.extend(chunks)
 
-    BM25_INDEX = BM25Okapi(tokenized_docs)
+        tokenized_docs = [
+            chunk.page_content.split()
+            for chunk in BM25_DOCUMENTS
+        ]
 
-    latency = (time.perf_counter() - start) * 1000
+        BM25_INDEX = BM25Okapi(tokenized_docs)
 
-    logger.info(
-        "BM25 Index Built | Total Chunks=%d | Time=%.2f ms",
-        len(BM25_DOCUMENTS),
-        latency,
-    )
+    except Exception:
 
+        logger.exception(
+            "Failed to build BM25 index."
+        )
+
+        raise
+
+    finally:
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "BM25 Build Finished | Total Chunks=%d | Time=%.2f ms",
+            len(BM25_DOCUMENTS),
+            latency,
+        )
 
 # ----------------------------------------------------------------------------------------------------------
 # BM25 Search
@@ -67,57 +80,80 @@ def bm25_search(
         query,
     )
 
-    if BM25_INDEX is None:
+    try:
+
+        if BM25_INDEX is None:
+
+            logger.warning(
+                "BM25 Index Not Initialized."
+            )
+
+            return []
+
+        tokenized_query = query.split()
+
+        scores = BM25_INDEX.get_scores(
+            tokenized_query
+        )
+
+        scored_docs = []
+
+        for chunk, score in zip(
+            BM25_DOCUMENTS,
+            scores,
+        ):
+
+            scored_docs.append(
+                (chunk, score)
+            )
+
+        scored_docs.sort(
+            key=lambda x: x[1],
+            reverse=True,
+        )
+
+        results = []
+
+        for chunk, score in scored_docs[:top_k]:
+
+            results.append(
+                {
+                    "chunk_id": chunk.metadata.get("chunk_id"),
+                    "document_id": chunk.metadata.get("document_id"),
+                    "file_name": chunk.metadata.get("file_name"),
+                    "version": chunk.metadata.get("version"),
+                    "is_active": chunk.metadata.get("is_active"),
+                    "text": chunk.page_content,
+                    "bm25_score": float(score),
+                }
+            )
 
         logger.info(
-            "BM25 Search Skipped | Index Not Initialized"
+            "BM25 Search Completed | Results=%d",
+            len(results),
+        )
+
+        return results
+
+    except Exception:
+
+        logger.exception(
+            "BM25 Search Failed | Query=%s",
+            query,
         )
 
         return []
 
-    tokenized_query = query.split()
+    finally:
 
-    scores = BM25_INDEX.get_scores(tokenized_query)
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
 
-    scored_docs = []
-
-    for chunk, score in zip(BM25_DOCUMENTS, scores):
-
-        scored_docs.append(
-            (chunk, score)
+        logger.info(
+            "BM25 Search Finished | Time=%.2f ms",
+            latency,
         )
-
-    scored_docs.sort(
-        key=lambda x: x[1],
-        reverse=True,
-    )
-
-    results = []
-
-    for chunk, score in scored_docs[:top_k]:
-
-        results.append(
-            {
-                "chunk_id": chunk.metadata.get("chunk_id"),
-                "document_id": chunk.metadata.get("document_id"),
-                "file_name": chunk.metadata.get("file_name"),
-                "version": chunk.metadata.get("version"),
-                "is_active": chunk.metadata.get("is_active"),
-                "text": chunk.page_content,
-                "bm25_score": float(score),
-            }
-        )
-
-    latency = (time.perf_counter() - start) * 1000
-
-    logger.info(
-        "BM25 Search Completed | Results=%d | Time=%.2f ms",
-        len(results),
-        latency,
-    )
-
-    return results
-
 
 # ----------------------------------------------------------------------------------------------------------
 # Rebuild BM25 Index
@@ -134,64 +170,82 @@ def rebuild_bm25_index(db):
         "Rebuilding BM25 Index"
     )
 
-    BM25_DOCUMENTS = []
-    BM25_INDEX = None
+    try:
 
-    active_documents = (
-        db.query(DocumentMetadata)
-        .filter(
-            DocumentMetadata.is_active == True
+        BM25_DOCUMENTS = []
+        BM25_INDEX = None
+
+        active_documents = (
+
+            db.query(DocumentMetadata)
+
+            .filter(
+                DocumentMetadata.is_active == True
+            )
+
+            .all()
+
         )
-        .all()
-    )
 
-    all_chunks = []
+        all_chunks = []
 
-    for document in active_documents:
+        for document in active_documents:
 
-        try:
+            try:
 
-            documents = load_document(
-                document.file_path
-            )
-
-            chunks = chunk_documents(
-                documents
-            )
-
-            for chunk in chunks:
-
-                chunk.metadata.update(
-                    {
-                        "document_id": document.document_id,
-                        "file_name": document.file_name,
-                        "version": document.version,
-                        "is_active": document.is_active,
-                    }
+                documents = load_document(
+                    document.file_path
                 )
 
-            all_chunks.extend(chunks)
+                chunks = chunk_documents(
+                    documents
+                )
 
-        except Exception:
+                for chunk in chunks:
 
-            logger.exception(
-                "Failed Loading Document | File=%s",
-                document.file_name,
+                    chunk.metadata.update(
+                        {
+                            "document_id": document.document_id,
+                            "file_name": document.file_name,
+                            "version": document.version,
+                            "is_active": document.is_active,
+                        }
+                    )
+
+                all_chunks.extend(chunks)
+
+            except Exception:
+
+                logger.exception(
+                    "Failed Loading Document | File=%s",
+                    document.file_name,
+                )
+
+        if all_chunks:
+
+            build_bm25_index(
+                all_chunks
             )
 
-    if all_chunks:
+    except Exception:
 
-        build_bm25_index(
-            all_chunks
+        logger.exception(
+            "BM25 Rebuild Failed."
         )
 
-    latency = (time.perf_counter() - start) * 1000
+        raise
 
-    logger.info(
-        "BM25 Rebuild Completed | Chunks=%d | Time=%.2f ms",
-        len(all_chunks),
-        latency,
-    )
+    finally:
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "BM25 Rebuild Finished | Chunks=%d | Time=%.2f ms",
+            len(BM25_DOCUMENTS),
+            latency,
+        )
 
 
 # ----------------------------------------------------------------------------------------------------------
@@ -212,38 +266,53 @@ def remove_document_chunks(
         document_id,
     )
 
-    BM25_DOCUMENTS = [
+    try:
 
-        chunk
+        BM25_DOCUMENTS = [
 
-        for chunk in BM25_DOCUMENTS
-
-        if chunk.metadata.get("document_id") != document_id
-
-    ]
-
-    if BM25_DOCUMENTS:
-
-        tokenized_docs = [
-
-            chunk.page_content.split()
+            chunk
 
             for chunk in BM25_DOCUMENTS
 
+            if chunk.metadata.get("document_id") != document_id
+
         ]
 
-        BM25_INDEX = BM25Okapi(
-            tokenized_docs
+        if BM25_DOCUMENTS:
+
+            tokenized_docs = [
+
+                chunk.page_content.split()
+
+                for chunk in BM25_DOCUMENTS
+
+            ]
+
+            BM25_INDEX = BM25Okapi(
+                tokenized_docs
+            )
+
+        else:
+
+            BM25_INDEX = None
+
+    except Exception:
+
+        logger.exception(
+            "Failed Removing BM25 Chunks | Document=%s",
+            document_id,
         )
 
-    else:
+        raise
 
-        BM25_INDEX = None
+    finally:
 
-    latency = (time.perf_counter() - start) * 1000
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
 
-    logger.info(
-        "BM25 Chunks Removed | Remaining=%d | Time=%.2f ms",
-        len(BM25_DOCUMENTS),
-        latency,
-    )
+        logger.info(
+            "BM25 Chunks Removed | Remaining=%d | Time=%.2f ms",
+            len(BM25_DOCUMENTS),
+            latency,
+        )

@@ -43,35 +43,29 @@ class Agent:
         state = {
 
             "question": question,
-
             "rewritten_question": "",
-
             "session_id": session_id,
 
             "tools": [],
-
             "reason": "",
 
             "memory_context": "",
-
             "rag_context": "",
-
             "web_context": "",
-
             "llm_context": "",
 
-            "answer": "",
+            "retrieved_docs": 0,
+            "best_rerank_score": 0.0,
+            "retrieval_success": False,
 
-            "evaluation": {
-                "is_answer_sufficient": False,
-                "reason": ""
-            },
+            "answer": "",
+            "needs_more_context": False,
+            "retry_reason": "",
 
             "retry_count": 0,
 
             "observability": {},
         }
-
         # ---------------------------------------------------------
         # Execute Graph (ASYNC)
         # ---------------------------------------------------------
@@ -139,29 +133,24 @@ class Agent:
         state = {
 
             "question": question,
-
             "rewritten_question": "",
-
             "session_id": session_id,
 
             "tools": [],
-
             "reason": "",
 
             "memory_context": "",
-
             "rag_context": "",
-
             "web_context": "",
-
             "llm_context": "",
 
-            "answer": "",
+            "retrieved_docs": 0,
+            "best_rerank_score": 0.0,
+            "retrieval_success": False,
 
-            "evaluation": {
-                "is_answer_sufficient": True,
-                "reason": ""
-            },
+            "answer": "",
+            "needs_more_context": False,
+            "retry_reason": "",
 
             "retry_count": 0,
 

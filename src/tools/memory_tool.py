@@ -93,8 +93,23 @@ Recent Conversation
                 session_id,
             )
 
-            raise
+            return {
+
+                "context": "",
+
+                "sources": []
+
+            }
 
         finally:
 
             db.close()
+
+            latency = (
+                time.perf_counter() - start
+            ) * 1000
+
+            logger.info(
+                "Memory Tool Finished | Time=%.2f ms",
+                latency,
+            )

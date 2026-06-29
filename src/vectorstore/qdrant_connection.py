@@ -13,9 +13,9 @@ from src.utils.logger import logger
 load_dotenv()
 
 
-# ---------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 # Configuration
-# ---------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 
 QDRANT_HOST = os.getenv(
     "QDRANT_HOST",
@@ -41,17 +41,24 @@ VECTOR_SIZE = int(
     )
 )
 
+
 logger.info(
-    "Connecting to Qdrant | Host=%s | Port=%d",
+    "Initializing Qdrant | Host=%s | Port=%d | Collection=%s",
     QDRANT_HOST,
     QDRANT_PORT,
+    QDRANT_COLLECTION,
 )
+
+
+# --------------------------------------------------------------------------------------------------
+# Initialize Qdrant
+# --------------------------------------------------------------------------------------------------
 
 try:
 
-    # ---------------------------------------------------------
+    # ------------------------------------------------------------------
     # Connect
-    # ---------------------------------------------------------
+    # ------------------------------------------------------------------
 
     QDRANT_CLIENT = QdrantClient(
         host=QDRANT_HOST,
@@ -60,46 +67,79 @@ try:
     )
 
     logger.info(
-        "Connected to Qdrant"
+        "Connected to Qdrant Successfully"
     )
 
-    # ---------------------------------------------------------
-    # Collection Check
-    # ---------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Verify Connection
+    # ------------------------------------------------------------------
 
     collections = QDRANT_CLIENT.get_collections()
 
-    existing_names = [
-        collection.name
-        for collection in collections.collections
-    ]
+    logger.info(
+        "Qdrant Connection Verified"
+    )
 
-    if QDRANT_COLLECTION not in existing_names:
+    # ------------------------------------------------------------------
+    # Check Collection
+    # ------------------------------------------------------------------
+
+    existing_collections = {
+
+        collection.name
+
+        for collection in collections.collections
+
+    }
+
+    if QDRANT_COLLECTION not in existing_collections:
+
+        logger.info(
+            "Collection Not Found. Creating | Collection=%s",
+            QDRANT_COLLECTION,
+        )
 
         QDRANT_CLIENT.create_collection(
+
             collection_name=QDRANT_COLLECTION,
+
             vectors_config=VectorParams(
+
                 size=VECTOR_SIZE,
+
                 distance=Distance.COSINE,
+
             ),
+
         )
 
         logger.info(
-            "Qdrant Collection Created | Collection=%s",
+            "Collection Created Successfully | Collection=%s",
             QDRANT_COLLECTION,
         )
 
     else:
 
         logger.info(
-            "Qdrant Collection Exists | Collection=%s",
+            "Collection Already Exists | Collection=%s",
             QDRANT_COLLECTION,
         )
 
-except Exception:
+except Exception as ex:
 
     logger.exception(
-        "Failed to Initialize Qdrant"
+        "Failed to Initialize Qdrant | Host=%s | Port=%d | Collection=%s",
+        QDRANT_HOST,
+        QDRANT_PORT,
+        QDRANT_COLLECTION,
     )
 
-    raise
+    raise RuntimeError(
+        "Unable to initialize Qdrant."
+    ) from ex
+
+finally:
+
+    logger.info(
+        "Qdrant Initialization Finished"
+    )

@@ -72,7 +72,9 @@ _embedding_model = None
 # Load Document
 # ----------------------------------------------------------------------------------------------------------
 
-def load_document(file_path: str):
+def load_document(
+    file_path: str,
+):
 
     start = time.perf_counter()
 
@@ -114,12 +116,9 @@ def load_document(file_path: str):
                 detail="No content found in document.",
             )
 
-        latency = (time.perf_counter() - start) * 1000
-
         logger.info(
-            "Document Loaded | Pages=%d | Time=%.2f ms",
+            "Document Loaded | Pages=%d",
             len(documents),
-            latency,
         )
 
         return documents
@@ -128,16 +127,27 @@ def load_document(file_path: str):
 
         raise
 
-    except Exception as e:
+    except Exception:
 
         logger.exception(
-            "Document Loading Failed | File=%s",
+            "Failed loading document | File=%s",
             file_path,
         )
 
         raise HTTPException(
             status_code=500,
-            detail=f"Document loading failed: {str(e)}",
+            detail="Failed to load document.",
+        )
+
+    finally:
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "Load Document Finished | Time=%.2f ms",
+            latency,
         )
 
 
@@ -156,28 +166,56 @@ def save_document(
         file.filename,
     )
 
-    safe_name = os.path.basename(file.filename)
+    try:
 
-    unique_name = f"{uuid.uuid4()}_{safe_name}"
-
-    file_path = UPLOAD_DIR / unique_name
-
-    with open(file_path, "wb") as buffer:
-
-        shutil.copyfileobj(
-            file.file,
-            buffer,
+        safe_name = os.path.basename(
+            file.filename
         )
 
-    latency = (time.perf_counter() - start) * 1000
+        unique_name = (
+            f"{uuid.uuid4()}_{safe_name}"
+        )
 
-    logger.info(
-        "Document Saved | Path=%s | Time=%.2f ms",
-        file_path,
-        latency,
-    )
+        file_path = (
+            UPLOAD_DIR / unique_name
+        )
 
-    return str(file_path)
+        with open(file_path, "wb") as buffer:
+
+            shutil.copyfileobj(
+                file.file,
+                buffer,
+            )
+
+        logger.info(
+            "Document Saved | Path=%s",
+            file_path,
+        )
+
+        return str(file_path)
+
+    except Exception:
+
+        logger.exception(
+            "Failed saving document | File=%s",
+            file.filename,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save uploaded document.",
+        )
+
+    finally:
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "Save Document Finished | Time=%.2f ms",
+            latency,
+        )
 
 
 # ----------------------------------------------------------------------------------------------------------
@@ -188,31 +226,69 @@ def chunk_documents(
     documents: List[Document],
 ) -> List[Document]:
 
-    if not documents:
-        return []
+    start = time.perf_counter()
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        separators=[
-            "\n\n",
-            "\n",
-            ". ",
-            " ",
-            "",
-        ],
-    )
+    try:
 
-    chunks = splitter.split_documents(documents)
+        if not documents:
 
-    for chunk in chunks:
+            logger.warning(
+                "No documents available for chunking."
+            )
 
-        chunk.metadata["chunk_id"] = str(
-            uuid.uuid4()
+            return []
+
+        splitter = RecursiveCharacterTextSplitter(
+
+            chunk_size=CHUNK_SIZE,
+
+            chunk_overlap=CHUNK_OVERLAP,
+
+            separators=[
+                "\n\n",
+                "\n",
+                ". ",
+                " ",
+                "",
+            ],
+
         )
 
-    return chunks
+        chunks = splitter.split_documents(
+            documents
+        )
 
+        for chunk in chunks:
+
+            chunk.metadata["chunk_id"] = str(
+                uuid.uuid4()
+            )
+
+        logger.info(
+            "Chunking Completed | Chunks=%d",
+            len(chunks),
+        )
+
+        return chunks
+
+    except Exception:
+
+        logger.exception(
+            "Chunking Failed"
+        )
+
+        raise
+
+    finally:
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "Chunking Finished | Time=%.2f ms",
+            latency,
+        )
 
 # ----------------------------------------------------------------------------------------------------------
 # Embedding Model
@@ -225,15 +301,29 @@ def get_embedding_model():
 
     global _embedding_model
 
-    if _embedding_model is None:
+    try:
 
-        _embedding_model = OpenAIEmbeddings(
-            model=EMBEDDING_MODEL,
-            chunk_size=EMBEDDING_BATCH_SIZE,
+        if _embedding_model is None:
+
+            logger.info(
+                "Initializing Embedding Model | Model=%s",
+                EMBEDDING_MODEL,
+            )
+
+            _embedding_model = OpenAIEmbeddings(
+                model=EMBEDDING_MODEL,
+                chunk_size=EMBEDDING_BATCH_SIZE,
+            )
+
+        return _embedding_model
+
+    except Exception:
+
+        logger.exception(
+            "Embedding Model Initialization Failed"
         )
 
-    return _embedding_model
-
+        raise
 
 # ----------------------------------------------------------------------------------------------------------
 # Generate Embeddings
@@ -243,33 +333,56 @@ def generate_embeddings(
     chunks: List[Document],
 ):
 
-    if not chunks:
-        return []
-
     start = time.perf_counter()
 
-    logger.info(
-        "Generating Embeddings | Chunks=%d",
-        len(chunks),
-    )
+    try:
 
-    embeddings_model = get_embedding_model()
+        if not chunks:
 
-    texts = [
-        chunk.page_content
-        for chunk in chunks
-    ]
+            logger.warning(
+                "No chunks available for embedding generation."
+            )
 
-    vectors = embeddings_model.embed_documents(
-        texts=texts,
-    )
+            return []
 
-    latency = (time.perf_counter() - start) * 1000
+        logger.info(
+            "Generating Embeddings | Chunks=%d",
+            len(chunks),
+        )
 
-    logger.info(
-        "Embeddings Generated | Vectors=%d | Time=%.2f ms",
-        len(vectors),
-        latency,
-    )
+        embedding_model = get_embedding_model()
 
-    return vectors
+        texts = [
+            chunk.page_content
+            for chunk in chunks
+        ]
+
+        vectors = embedding_model.embed_documents(
+            texts=texts,
+        )
+
+        logger.info(
+            "Embeddings Generated | Count=%d",
+            len(vectors),
+        )
+
+        return vectors
+
+    except Exception:
+
+        logger.exception(
+            "Embedding Generation Failed"
+        )
+
+        raise
+
+    finally:
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "Embedding Generation Finished | Time=%.2f ms",
+            latency,
+        )

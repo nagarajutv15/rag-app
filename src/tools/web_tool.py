@@ -74,4 +74,21 @@ Content:
                 query,
             )
 
-            raise
+            return {
+
+                "context": "",
+
+                "sources": []
+
+            }
+        
+        finally:
+
+            latency = (
+                time.perf_counter() - start
+            ) * 1000
+
+            logger.info(
+                "Web Tool Finished | Time=%.2f ms",
+                latency,
+            )
