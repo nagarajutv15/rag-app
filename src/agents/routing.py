@@ -1,4 +1,4 @@
-MAX_RETRIES = 3
+MAX_RETRIES = 2
 
 
 def should_retry(state):

@@ -31,6 +31,18 @@ async def generator(state):
         ]
     )
 
+    logger.info("=" * 80)
+    logger.info("MEMORY CONTEXT:\n%s", state.get("memory_context", ""))
+
+    logger.info("=" * 80)
+    logger.info("RAG CONTEXT:\n%s", state.get("rag_context", ""))
+
+    logger.info("=" * 80)
+    logger.info("WEB CONTEXT:\n%s", state.get("web_context", ""))
+
+    logger.info("=" * 80)
+    logger.info("QUESTION:\n%s", query)
+
     latency = (time.perf_counter() - start) * 1000
 
     logger.info(
