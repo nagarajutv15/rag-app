@@ -15,6 +15,7 @@ async def evaluator(state: AgentState):
 
     prompt = EVALUATOR_PROMPT.format(
         question=state["question"],
+        tools=", ".join(state["tools"]),
         memory=state.get("memory_context", ""),
         rag=state.get("rag_context", ""),
         web=state.get("web_context", ""),
@@ -52,6 +53,6 @@ async def evaluator(state: AgentState):
                 "passed": evaluation["is_answer_sufficient"],
                 "reason": evaluation["reason"],
                 "latency_ms": round(latency, 2),
-            }
-        }
+            },
+        },
     }

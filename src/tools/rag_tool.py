@@ -26,6 +26,7 @@ class RAGTool:
             documents = hybrid_search(
                 query=query,
                 top_k=5,
+                min_score=0.35,
             )
 
             latency = (time.perf_counter() - start) * 1000
