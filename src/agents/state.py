@@ -23,6 +23,8 @@ class AgentState(TypedDict):
 
     web_context: str
 
+    llm_context: str
+
     answer: str
 
     evaluation: EvaluationResult

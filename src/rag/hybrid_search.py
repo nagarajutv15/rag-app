@@ -106,6 +106,14 @@ def hybrid_search(
     logger.info("Vector Results : %d", len(vector_results))
     logger.info("=" * 60)
 
+    if not reranked_results:
+
+        logger.info(
+            "No relevant documents after reranking."
+        )
+
+        return []
+
     return reranked_results
 
 
@@ -117,16 +125,14 @@ async def rerank(
     query: str,
     documents: list,
     top_k: int = 5,
+    min_rerank_score: float = 4.0,
 ):
 
     if not documents:
         return []
 
     pairs = [
-        (
-            query,
-            doc.get("text", ""),
-        )
+        (query, doc.get("text", ""))
         for doc in documents
     ]
 
@@ -141,6 +147,8 @@ async def rerank(
 
         doc["rerank_score"] = float(score)
 
+        # # Reject weak matches
+        # if float(score) >= min_rerank_score:
         reranked_documents.append(doc)
 
     reranked_documents.sort(
@@ -148,8 +156,13 @@ async def rerank(
         reverse=True,
     )
 
+    logger.info(
+        "Rerank Score %.3f | Chunk %s",
+        score,
+        doc["chunk_id"],
+    )
+            
     return reranked_documents[:top_k]
-
 
 # ----------------------------------------------------------------------------------------------------------
 # Vector Search

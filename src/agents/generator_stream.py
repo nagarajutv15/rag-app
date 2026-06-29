@@ -19,6 +19,7 @@ async def generator_stream(state):
         memory=state.get("memory_context", ""),
         rag=state.get("rag_context", ""),
         web=state.get("web_context", ""),
+        llm=state.get("llm_context", ""),
     )
 
     logger.info("Streaming Generator Started")
@@ -30,6 +31,8 @@ async def generator_stream(state):
             ("system", prompt),
         ]
     ):
+
+        logger.info("Chunk -> %s", repr(chunk.content))
 
         if chunk.content:
 
