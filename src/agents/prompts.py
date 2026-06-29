@@ -216,7 +216,7 @@ Original Question
 
 {question}
 
-Evaluation Feedback
+Retry Reason
 
 {reason}
 
@@ -230,7 +230,6 @@ Rules
 - Never answer the question.
 - Return ONLY the rewritten question.
 """
-
 
 # ----------------------------------------------------------------------------------------------------------
 # Conversation Summary Prompt

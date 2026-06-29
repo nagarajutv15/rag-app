@@ -1,16 +1,43 @@
-from src.llm.llm_service import llm
+import time
+
 from src.agents.prompts import SUMMARY_PROMPT
+from src.llm.llm_service import llm
+from src.utils.logger import logger
 
 
 async def summarize_conversation(
     history: str,
 ):
 
-    response = await llm.ainvoke(
-        [
-            ("system", SUMMARY_PROMPT),
-            ("human", history),
-        ]
-    )
+    start = time.perf_counter()
 
-    return response.content.strip()
+    try:
+
+        response = await llm.ainvoke(
+            [
+                ("system", SUMMARY_PROMPT),
+                ("human", history),
+            ]
+        )
+
+        summary = response.content.strip()
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "Conversation Summarized | Characters=%d | Time=%.2f ms",
+            len(summary),
+            latency,
+        )
+
+        return summary
+
+    except Exception:
+
+        logger.exception(
+            "Conversation Summary Failed"
+        )
+
+        raise

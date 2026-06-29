@@ -1,4 +1,5 @@
 import asyncio
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from sentence_transformers import CrossEncoder
@@ -17,6 +18,10 @@ from src.vectorstore.qdrant_connection import (
 )
 
 
+# ----------------------------------------------------------------------------------------------------------
+# CrossEncoder
+# ----------------------------------------------------------------------------------------------------------
+
 reranker = CrossEncoder(
     "cross-encoder/ms-marco-MiniLM-L-6-v2"
 )
@@ -32,90 +37,180 @@ def hybrid_search(
     min_score: float = 0.0,
 ):
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    start = time.perf_counter()
 
-        bm25_future = executor.submit(
-            bm25_search,
-            query=query,
-            top_k=top_k,
-        )
+    try:
 
-        vector_future = executor.submit(
-            retrieve_documents,
-            query=query,
-            top_k=top_k,
-            min_score=min_score,
-        )
+        # ---------------------------------------------------------
+        # Run BM25 and Vector Search in parallel
+        # ---------------------------------------------------------
 
-        bm25_results = bm25_future.result()
+        with ThreadPoolExecutor(max_workers=2) as executor:
 
-        vector_results = vector_future.result()
-
-    merged_results = {}
-
-    for doc in vector_results:
-
-        chunk_id = doc.get("chunk_id")
-
-        if not chunk_id:
-            continue
-
-        merged_results[chunk_id] = {
-            **doc,
-            "hybrid_score": doc.get("score", 0.0) * 0.7,
-        }
-
-    for doc in bm25_results:
-
-        chunk_id = doc.get("chunk_id")
-
-        if not chunk_id:
-            continue
-
-        if chunk_id in merged_results:
-
-            merged_results[chunk_id]["hybrid_score"] += (
-                doc.get("bm25_score", 0.0) * 0.3
+            bm25_future = executor.submit(
+                bm25_search,
+                query=query,
+                top_k=top_k,
             )
 
-        else:
+            vector_future = executor.submit(
+                retrieve_documents,
+                query=query,
+                top_k=top_k,
+                min_score=min_score,
+            )
+
+            bm25_results = bm25_future.result()
+
+            vector_results = vector_future.result()
+
+        # ---------------------------------------------------------
+        # Merge Results
+        # ---------------------------------------------------------
+
+        merged_results = {}
+
+        for doc in vector_results:
+
+            chunk_id = doc.get("chunk_id")
+
+            if not chunk_id:
+                continue
 
             merged_results[chunk_id] = {
+
                 **doc,
-                "hybrid_score": doc.get("bm25_score", 0.0) * 0.3,
+
+                "hybrid_score": doc.get("score", 0.0) * 0.7,
+
             }
 
-    final_results = sorted(
-        merged_results.values(),
-        key=lambda x: x.get("hybrid_score", 0.0),
-        reverse=True,
-    )
+        for doc in bm25_results:
 
-    # Run async rerank from sync code
-    reranked_results = asyncio.run(
-        rerank(
-            query=query,
-            documents=final_results,
-            top_k=top_k,
+            chunk_id = doc.get("chunk_id")
+
+            if not chunk_id:
+                continue
+
+            if chunk_id in merged_results:
+
+                merged_results[chunk_id]["hybrid_score"] += (
+
+                    doc.get("bm25_score", 0.0) * 0.3
+
+                )
+
+            else:
+
+                merged_results[chunk_id] = {
+
+                    **doc,
+
+                    "hybrid_score": doc.get("bm25_score", 0.0) * 0.3,
+
+                }
+
+        merged_results = sorted(
+
+            merged_results.values(),
+
+            key=lambda x: x["hybrid_score"],
+
+            reverse=True,
+
         )
-    )
-
-    logger.info("=" * 60)
-    logger.info("Question       : %s", query)
-    logger.info("BM25 Results   : %d", len(bm25_results))
-    logger.info("Vector Results : %d", len(vector_results))
-    logger.info("=" * 60)
-
-    if not reranked_results:
 
         logger.info(
-            "No relevant documents after reranking."
+            "Hybrid Merge Completed | Total=%d",
+            len(merged_results),
         )
 
-        return []
+        # ---------------------------------------------------------
+        # CrossEncoder Reranking
+        # ---------------------------------------------------------
 
-    return reranked_results
+        reranked_documents = asyncio.run(
 
+            rerank(
+
+                query=query,
+
+                documents=merged_results,
+
+                top_k=top_k,
+
+            )
+
+        )
+
+        best_score = max(
+
+            (
+                doc["rerank_score"]
+                for doc in reranked_documents
+            ),
+
+            default=0.0,
+
+        )
+
+        logger.info("=" * 70)
+        logger.info("Question            : %s", query)
+        logger.info("BM25 Results        : %d", len(bm25_results))
+        logger.info("Vector Results      : %d", len(vector_results))
+        logger.info("Merged Results      : %d", len(merged_results))
+        logger.info("Reranked Documents  : %d", len(reranked_documents))
+        logger.info("Best Rerank Score   : %.3f", best_score)
+        logger.info("=" * 70)
+
+        return {
+
+            "documents": reranked_documents,
+
+            "retrieved_docs": len(reranked_documents),
+
+            "best_rerank_score": best_score,
+
+            "retrieval_success": bool(reranked_documents),
+
+        }
+
+    except Exception:
+
+        logger.exception(
+            "Hybrid Search Failed | Query=%s",
+            query,
+        )
+
+        return {
+
+            "documents": [],
+
+            "retrieved_docs": 0,
+
+            "best_rerank_score": 0.0,
+
+            "retrieval_success": False,
+
+        }
+
+    finally:
+
+        latency = (
+
+            time.perf_counter() - start
+
+        ) * 1000
+
+        logger.info(
+            "Hybrid Search Finished | Time=%.2f ms",
+            latency,
+        )
+
+
+# ----------------------------------------------------------------------------------------------------------
+# CrossEncoder Reranking
+# ----------------------------------------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------------------------------------
 # CrossEncoder Reranking
@@ -125,48 +220,77 @@ async def rerank(
     query: str,
     documents: list,
     top_k: int = 5,
-    min_rerank_score: float = 2.0,
 ):
 
-    if not documents:
-        return []
+    try:
 
-    pairs = [
-        (query, doc.get("text", ""))
-        for doc in documents
-    ]
+        if not documents:
 
-    scores = await asyncio.to_thread(
-        reranker.predict,
-        pairs,
-    )
+            logger.info(
+                "No documents available for reranking."
+            )
 
-    reranked_documents = []
+            return []
 
-    for doc, score in zip(documents, scores):
+        pairs = [
 
-        doc["rerank_score"] = float(score)
+            (
+                query,
+                doc.get("text", ""),
+            )
 
-        logger.info(
-            "Rerank Score %.3f | Chunk %s",
-            score,
-            doc["chunk_id"],
+            for doc in documents
+
+        ]
+
+        scores = await asyncio.to_thread(
+            reranker.predict,
+            pairs,
         )
 
-        if score >= min_rerank_score:
-            reranked_documents.append(doc)
+        # ---------------------------------------------------------
+        # Attach rerank scores
+        # ---------------------------------------------------------
 
-    reranked_documents.sort(
-        key=lambda x: x["rerank_score"],
-        reverse=True,
-    )
+        for doc, score in zip(documents, scores):
 
-    logger.info(
-        "Documents after reranking filter: %d",
-        len(reranked_documents),
-    )
+            doc["rerank_score"] = float(score)
 
-    return reranked_documents[:top_k]
+            logger.info(
+                "Chunk=%s | Hybrid=%.3f | Rerank=%.3f",
+                doc.get("chunk_id"),
+                doc.get("hybrid_score", 0.0),
+                score,
+            )
+
+        # ---------------------------------------------------------
+        # Sort by rerank score
+        # ---------------------------------------------------------
+
+        documents.sort(
+            key=lambda x: x["rerank_score"],
+            reverse=True,
+        )
+
+        logger.info(
+            "Top %d documents selected after reranking.",
+            min(len(documents), top_k),
+        )
+
+        return documents[:top_k]
+
+    except Exception:
+
+        logger.exception(
+            "CrossEncoder reranking failed."
+        )
+
+        return []
+
+
+# ----------------------------------------------------------------------------------------------------------
+# Vector Search
+# ----------------------------------------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------------------------------------
 # Vector Search
@@ -179,50 +303,84 @@ def retrieve_documents(
     active_only: bool = True,
 ):
 
-    embedding_model = get_embedding_model()
+    start = time.perf_counter()
 
-    query_vector = embedding_model.embed_query(query)
+    try:
 
-    search_filter = None
-
-    if active_only:
-
-        search_filter = Filter(
-            must=[
-                FieldCondition(
-                    key="is_active",
-                    match=MatchValue(value=True),
-                )
-            ]
+        logger.info(
+            "Vector Search Started | Query=%s",
+            query,
         )
 
-    results = QDRANT_CLIENT.search(
-        collection_name=QDRANT_COLLECTION,
-        query_vector=query_vector,
-        query_filter=search_filter,
-        limit=top_k,
-    )
+        embedding_model = get_embedding_model()
 
-    retrieved_chunks = []
+        query_vector = embedding_model.embed_query(query)
 
-    for result in results:
+        search_filter = None
 
-        if result.score < min_score:
-            continue
+        if active_only:
 
-        payload = result.payload or {}
+            search_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="is_active",
+                        match=MatchValue(value=True),
+                    )
+                ]
+            )
 
-        retrieved_chunks.append(
-            {
-                "chunk_id": payload.get("chunk_id"),
-                "document_id": payload.get("document_id"),
-                "department_id": payload.get("department_id"),
-                "file_name": payload.get("file_name"),
-                "version": payload.get("version"),
-                "is_active": payload.get("is_active"),
-                "text": payload.get("text", ""),
-                "score": float(result.score),
-            }
+        results = QDRANT_CLIENT.search(
+            collection_name=QDRANT_COLLECTION,
+            query_vector=query_vector,
+            query_filter=search_filter,
+            limit=top_k,
         )
 
-    return retrieved_chunks
+        retrieved_chunks = []
+
+        for result in results:
+
+            if result.score < min_score:
+                continue
+
+            payload = result.payload or {}
+
+            retrieved_chunks.append(
+                {
+                    "chunk_id": payload.get("chunk_id"),
+                    "document_id": payload.get("document_id"),
+                    "department_id": payload.get("department_id"),
+                    "file_name": payload.get("file_name"),
+                    "version": payload.get("version"),
+                    "is_active": payload.get("is_active"),
+                    "text": payload.get("text", ""),
+                    "score": float(result.score),
+                }
+            )
+
+        logger.info(
+            "Vector Search Completed | Retrieved=%d",
+            len(retrieved_chunks),
+        )
+
+        return retrieved_chunks
+
+    except Exception:
+
+        logger.exception(
+            "Vector Search Failed | Query=%s",
+            query,
+        )
+
+        return []
+
+    finally:
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "Vector Search Finished | Time=%.2f ms",
+            latency,
+        )

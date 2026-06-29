@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 from src.agents.prompts import GENERATOR_PROMPT
@@ -5,11 +6,16 @@ from src.llm.llm_service import llm
 from src.utils.logger import logger
 
 
+GENERATION_TIMEOUT = 60
+
+
 async def generator(state):
 
     start = time.perf_counter()
 
-    logger.info("Generator Started")
+    logger.info(
+        "Generator Started"
+    )
 
     query = (
         state.get("rewritten_question")
@@ -25,38 +31,149 @@ async def generator(state):
         llm=state.get("llm_context", ""),
     )
 
-    response = await llm.ainvoke(
-        [
-            ("system", prompt),
-        ]
-    )
+    try:
 
-    logger.info("=" * 80)
-    logger.info("MEMORY CONTEXT:\n%s", state.get("memory_context", ""))
+        response = await asyncio.wait_for(
 
-    logger.info("=" * 80)
-    logger.info("RAG CONTEXT:\n%s", state.get("rag_context", ""))
+            llm.ainvoke(
+                [
+                    ("system", prompt),
+                ]
+            ),
 
-    logger.info("=" * 80)
-    logger.info("WEB CONTEXT:\n%s", state.get("web_context", ""))
+            timeout=GENERATION_TIMEOUT,
 
-    logger.info("=" * 80)
-    logger.info("QUESTION:\n%s", query)
+        )
 
-    latency = (time.perf_counter() - start) * 1000
+        answer = response.content.strip()
 
-    logger.info(
-        "Generator Completed | Time=%.2f ms",
-        latency,
-    )
+        needs_more_context = (
+            "NEED_MORE_CONTEXT" in answer
+        )
 
-    return {
-        "answer": response.content,
-        "observability": {
-            **state.get("observability", {}),
-            "generator": {
-                "latency_ms": round(latency, 2),
-            }
+        if needs_more_context:
+
+            answer = answer.replace(
+                "NEED_MORE_CONTEXT",
+                "",
+            ).strip()
+
+        logger.info("=" * 80)
+        logger.info(
+            "QUESTION:\n%s",
+            query,
+        )
+
+        logger.info("=" * 80)
+        logger.info(
+            "MEMORY CONTEXT:\n%s",
+            state.get("memory_context", ""),
+        )
+
+        logger.info("=" * 80)
+        logger.info(
+            "RAG CONTEXT:\n%s",
+            state.get("rag_context", ""),
+        )
+
+        logger.info("=" * 80)
+        logger.info(
+            "WEB CONTEXT:\n%s",
+            state.get("web_context", ""),
+        )
+
+        logger.info("=" * 80)
+        logger.info(
+            "ANSWER:\n%s",
+            answer,
+        )
+
+        logger.info(
+            "Generator Completed | Needs More Context=%s",
+            needs_more_context,
+        )
+
+        return {
+
+            "answer": answer,
+
+            "needs_more_context": needs_more_context,
+
+            "retry_reason": (
+
+                "Generator requested additional context."
+
+                if needs_more_context
+
+                else ""
+
+            ),
+
+            "observability": {
+
+                **state.get(
+                    "observability",
+                    {},
+                ),
+
+                "generator": {
+
+                    "latency_ms": round(
+                        (
+                            time.perf_counter()
+                            - start
+                        )
+                        * 1000,
+                        2,
+                    ),
+
+                    "needs_more_context": needs_more_context,
+
+                },
+
+            },
+
         }
-    }
 
+    except asyncio.TimeoutError:
+
+        logger.exception(
+            "Generator Timed Out"
+        )
+
+        return {
+
+            "answer": "The request timed out while generating the response.",
+
+            "needs_more_context": False,
+
+            "retry_reason": "Generation timeout.",
+
+        }
+
+    except Exception:
+
+        logger.exception(
+            "Generator Failed"
+        )
+
+        return {
+
+            "answer": "An unexpected error occurred while generating the response.",
+
+            "needs_more_context": False,
+
+            "retry_reason": "Generator exception.",
+
+        }
+
+    finally:
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "Generator Finished | Time=%.2f ms",
+            latency,
+        )

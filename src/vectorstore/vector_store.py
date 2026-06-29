@@ -26,42 +26,75 @@ def store_vectors(
     vectors: List[list],
 ):
 
-    if not chunks or not vectors:
-        return
-
     start = time.perf_counter()
 
-    logger.info(
-        "Vector Store Started | Vectors=%d",
-        len(vectors),
-    )
+    try:
 
-    points = []
+        if not chunks or not vectors:
 
-    for chunk, vector in zip(chunks, vectors):
-
-        payload = build_payload(chunk)
-
-        points.append(
-            PointStruct(
-                id=str(uuid4()),
-                vector=vector,
-                payload=payload,
+            logger.warning(
+                "No vectors available to store."
             )
+
+            return
+
+        logger.info(
+            "Vector Store Started | Chunks=%d | Vectors=%d",
+            len(chunks),
+            len(vectors),
         )
 
-    QDRANT_CLIENT.upsert(
-        collection_name=QDRANT_COLLECTION,
-        points=points,
-    )
+        points = []
 
-    latency = (time.perf_counter() - start) * 1000
+        for chunk, vector in zip(chunks, vectors):
 
-    logger.info(
-        "Vectors Stored | Count=%d | Time=%.2f ms",
-        len(points),
-        latency,
-    )
+            payload = build_payload(chunk)
+
+            points.append(
+
+                PointStruct(
+
+                    id=str(uuid4()),
+
+                    vector=vector,
+
+                    payload=payload,
+
+                )
+
+            )
+
+        QDRANT_CLIENT.upsert(
+
+            collection_name=QDRANT_COLLECTION,
+
+            points=points,
+
+        )
+
+        logger.info(
+            "Vector Store Successful | Stored=%d",
+            len(points),
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Failed storing vectors."
+        )
+
+        raise
+
+    finally:
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "Vector Store Finished | Time=%.2f ms",
+            latency,
+        )
 
 
 # ----------------------------------------------------------------------------------------------------------
@@ -72,16 +105,39 @@ def build_payload(
     chunk: Document,
 ):
 
-    metadata = chunk.metadata
+    try:
 
-    return {
-        "chunk_id": metadata.get("chunk_id"),
-        "document_id": metadata.get("document_id"),
-        "file_name": metadata.get("file_name"),
-        "version": metadata.get("version", 1),
-        "is_active": metadata.get("is_active", True),
-        "text": chunk.page_content,
-    }
+        metadata = chunk.metadata
+
+        return {
+
+            "chunk_id": metadata.get("chunk_id"),
+
+            "document_id": metadata.get("document_id"),
+
+            "file_name": metadata.get("file_name"),
+
+            "version": metadata.get(
+                "version",
+                1,
+            ),
+
+            "is_active": metadata.get(
+                "is_active",
+                True,
+            ),
+
+            "text": chunk.page_content,
+
+        }
+
+    except Exception:
+
+        logger.exception(
+            "Failed building Qdrant payload."
+        )
+
+        raise
 
 
 # ----------------------------------------------------------------------------------------------------------
@@ -94,29 +150,58 @@ def delete_document_vectors(
 
     start = time.perf_counter()
 
-    logger.info(
-        "Deleting Document Vectors | Document=%s",
-        document_id,
-    )
+    try:
 
-    QDRANT_CLIENT.delete(
-        collection_name=QDRANT_COLLECTION,
-        points_selector=Filter(
-            must=[
-                FieldCondition(
-                    key="document_id",
-                    match=MatchValue(
-                        value=document_id,
-                    ),
-                )
-            ]
-        ),
-    )
+        logger.info(
+            "Deleting Document Vectors | Document=%s",
+            document_id,
+        )
 
-    latency = (time.perf_counter() - start) * 1000
+        QDRANT_CLIENT.delete(
 
-    logger.info(
-        "Document Vectors Deleted | Document=%s | Time=%.2f ms",
-        document_id,
-        latency,
-    )
+            collection_name=QDRANT_COLLECTION,
+
+            points_selector=Filter(
+
+                must=[
+
+                    FieldCondition(
+
+                        key="document_id",
+
+                        match=MatchValue(
+                            value=document_id,
+                        ),
+
+                    )
+
+                ]
+
+            ),
+
+        )
+
+        logger.info(
+            "Document Vectors Deleted | Document=%s",
+            document_id,
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Failed deleting vectors | Document=%s",
+            document_id,
+        )
+
+        raise
+
+    finally:
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        logger.info(
+            "Delete Vector Operation Finished | Time=%.2f ms",
+            latency,
+        )

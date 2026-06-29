@@ -1,6 +1,6 @@
 import json
 import time
-
+import asyncio
 from src.llm.llm_service import llm
 from src.agents.prompts import PLANNER_PROMPT
 from src.agents.state import AgentState
@@ -11,9 +11,14 @@ async def planner(state: AgentState):
 
     start = time.perf_counter()
 
+    query = (
+        state.get("rewritten_question")
+        or state["question"]
+    )
+
     logger.info(
-        "Planner Started | Question: %s",
-        state["question"],
+        "Planner Started | Query=%s",
+        query,
     )
 
     query = (
@@ -21,13 +26,15 @@ async def planner(state: AgentState):
         or state["question"]
     )
 
-    response = await llm.ainvoke(
-        [
-            ("system", PLANNER_PROMPT),
-            ("human", query),
-        ]
+    response = await asyncio.wait_for(
+        llm.ainvoke(
+            [
+                ("system", PLANNER_PROMPT),
+                ("human", query),
+            ]
+        ),
+        timeout=30,
     )
-
     raw = response.content.strip()
 
     if raw.startswith("```"):
@@ -51,7 +58,7 @@ async def planner(state: AgentState):
 
         result = json.loads(raw)
 
-    except Exception:
+    except json.JSONDecodeError:
 
         logger.exception(
             "Planner returned invalid JSON."
@@ -59,15 +66,27 @@ async def planner(state: AgentState):
 
         result = {}
 
-    tools = result.get("tools", [])
+    except Exception:
+
+        logger.exception(
+            "Planner failed unexpectedly."
+        )
+
+        result = {}
+        logger.exception(
+            "Planner returned invalid JSON."
+        )
+
+        result = {}
+
+    tools = result.get("tools") or []
 
     if not isinstance(tools, list):
         tools = []
 
-    reason = result.get(
-        "reason",
-        "No reason returned by planner."
-    )
+    reason = reason = result.get(
+        "reason"
+    ) or "Planner did not provide a reason."
 
     latency = (time.perf_counter() - start) * 1000
 

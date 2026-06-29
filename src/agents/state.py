@@ -1,34 +1,56 @@
 from typing import TypedDict
 
-class EvaluationResult(TypedDict):
-    is_answer_sufficient: bool
-    reason: str
-
 
 class AgentState(TypedDict):
 
+    # ------------------------------------------------------------------
+    # User
+    # ------------------------------------------------------------------
+
     question: str
-
     rewritten_question: str
-
     session_id: str
 
-    tools: list[str]
+    # ------------------------------------------------------------------
+    # Planner
+    # ------------------------------------------------------------------
 
+    tools: list[str]
     reason: str
 
+    # ------------------------------------------------------------------
+    # Retrieved Context
+    # ------------------------------------------------------------------
+
     memory_context: str
-
     rag_context: str
-
     web_context: str
-
     llm_context: str
 
-    answer: str
+    # ------------------------------------------------------------------
+    # Retrieval Metadata
+    # ------------------------------------------------------------------
 
-    evaluation: EvaluationResult
+    retrieved_docs: int
+    best_rerank_score: float
+    retrieval_success: bool
+
+    # ------------------------------------------------------------------
+    # Generation
+    # ------------------------------------------------------------------
+
+    answer: str
+    needs_more_context: bool
+    retry_reason: str
+
+    # ------------------------------------------------------------------
+    # Retry
+    # ------------------------------------------------------------------
 
     retry_count: int
+
+    # ------------------------------------------------------------------
+    # Observability
+    # ------------------------------------------------------------------
 
     observability: dict
