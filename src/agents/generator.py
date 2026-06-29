@@ -18,7 +18,7 @@ async def generator(state):
 
     prompt = GENERATOR_PROMPT.format(
         question=query,
-        tools=", ".join(state["tools"]),   # <-- Add this
+        tools=", ".join(state["tools"]),
         memory=state.get("memory_context", ""),
         rag=state.get("rag_context", ""),
         web=state.get("web_context", ""),
