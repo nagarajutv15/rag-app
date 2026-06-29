@@ -4,7 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.models.chat_session import ChatSession
 from src.models.chat_message import ChatMessage
 from src.services.summary_service import summarize_conversation
-
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def create_session(db):
 # Save a chat message
 # ----------------------------------------------------------------------------------------------------------#
 
-def save_message(
+async def save_message(
     db,
     session_id: str,
     role: str,
@@ -71,7 +71,7 @@ def save_message(
         db.commit()
         db.refresh(message)
 
-        maybe_update_summary(
+        await maybe_update_summary(
             db,
             session_id,
         )
@@ -213,7 +213,7 @@ def delete_chat_history(
 
 
 
-def update_conversation_summary(
+async def update_conversation_summary(
     db,
     session_id: str,
 ):
@@ -247,9 +247,9 @@ def update_conversation_summary(
             for message in messages
         )
 
-        summary = summarize_conversation(
-            history
-        ).strip()
+        
+
+        summary = (await summarize_conversation(history)).strip()
 
         # Skip empty summaries
         if not summary:
@@ -281,7 +281,7 @@ def update_conversation_summary(
 
 
 
-def maybe_update_summary(
+async def maybe_update_summary(
     db,
     session_id: str,
 ):
@@ -302,7 +302,7 @@ def maybe_update_summary(
             count,
         )
                 
-        update_conversation_summary(
+        await update_conversation_summary(
             db,
             session_id,
         )

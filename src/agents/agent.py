@@ -82,14 +82,14 @@ class Agent:
         # Save Conversation
         # ---------------------------------------------------------
 
-        save_message(
+        await save_message(
             db=db,
             session_id=session_id,
             role="user",
             content=question,
         )
 
-        save_message(
+        await save_message(
             db=db,
             session_id=session_id,
             role="assistant",
@@ -188,7 +188,7 @@ class Agent:
         # Save User Message
         # ---------------------------------------------------------
 
-        save_message(
+        await save_message(
             db=db,
             session_id=session_id,
             role="user",
@@ -211,7 +211,7 @@ class Agent:
         # Save Assistant Message
         # ---------------------------------------------------------
 
-        save_message(
+        await save_message(
             db=db,
             session_id=session_id,
             role="assistant",

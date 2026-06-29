@@ -125,7 +125,7 @@ async def rerank(
     query: str,
     documents: list,
     top_k: int = 5,
-    min_rerank_score: float = 4.0,
+    min_rerank_score: float = 2.0,
 ):
 
     if not documents:
@@ -147,9 +147,14 @@ async def rerank(
 
         doc["rerank_score"] = float(score)
 
-        # # Reject weak matches
-        # if float(score) >= min_rerank_score:
-        reranked_documents.append(doc)
+        logger.info(
+            "Rerank Score %.3f | Chunk %s",
+            score,
+            doc["chunk_id"],
+        )
+
+        if score >= min_rerank_score:
+            reranked_documents.append(doc)
 
     reranked_documents.sort(
         key=lambda x: x["rerank_score"],
@@ -157,11 +162,10 @@ async def rerank(
     )
 
     logger.info(
-        "Rerank Score %.3f | Chunk %s",
-        score,
-        doc["chunk_id"],
+        "Documents after reranking filter: %d",
+        len(reranked_documents),
     )
-            
+
     return reranked_documents[:top_k]
 
 # ----------------------------------------------------------------------------------------------------------
