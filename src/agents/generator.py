@@ -22,6 +22,15 @@ async def generator(state):
         or state["question"]
     )
 
+    retrieval_status = ""
+
+    if state.get("retrieval_failed"):
+
+        retrieval_status = (
+            "No relevant internal documents were found "
+            "after retrieval retries."
+        )
+
     prompt = GENERATOR_PROMPT.format(
         question=query,
         tools=", ".join(state["tools"]),
@@ -29,6 +38,7 @@ async def generator(state):
         rag=state.get("rag_context", ""),
         web=state.get("web_context", ""),
         llm=state.get("llm_context", ""),
+        retrieval_status=retrieval_status,
     )
 
     try:

@@ -98,10 +98,19 @@ async def save_message(
 
         db.refresh(message)
 
-        await maybe_update_summary(
-            db=db,
-            session_id=session_id,
-        )
+        try:
+
+            await maybe_update_summary(
+                db=db,
+                session_id=session_id,
+            )
+
+        except Exception:
+
+            logger.exception(
+                "Conversation Summary Update Failed (Non-Fatal) | Session=%s",
+                session_id,
+            )
 
         latency = (
             time.perf_counter() - start

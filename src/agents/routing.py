@@ -47,8 +47,14 @@ def should_generate(state):
 
     if state["retry_count"] >= MAX_RETRIES:
 
+        state["retrieval_failed"] = True
+
+        state["retrieval_reason"] = (
+            "No relevant documents found after maximum retries."
+        )
+
         logger.info(
-            "Routing -> Generator | Max retries reached with no relevant RAG documents."
+            "Routing -> Generator | Max retries reached with no retrieval."
         )
 
         return "generate"
