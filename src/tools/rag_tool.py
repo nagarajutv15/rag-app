@@ -25,8 +25,6 @@ class RAGTool:
 
             search_result = hybrid_search(
                 query=query,
-                top_k=5,
-                min_score=0.35,
             )
 
             documents = search_result["documents"]
