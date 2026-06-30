@@ -1,4 +1,5 @@
 import time
+import threading
 
 from rank_bm25 import BM25Okapi
 
@@ -12,6 +13,7 @@ from src.utils.logger import logger
 
 BM25_INDEX = None
 BM25_DOCUMENTS = []
+BM25_LOCK = threading.Lock()
 
 
 # ----------------------------------------------------------------------------------------------------------
@@ -32,14 +34,16 @@ def build_bm25_index(chunks):
             len(chunks),
         )
 
-        BM25_DOCUMENTS.extend(chunks)
+        with BM25_LOCK:
 
-        tokenized_docs = [
-            chunk.page_content.split()
-            for chunk in BM25_DOCUMENTS
-        ]
+            BM25_DOCUMENTS.extend(chunks)
 
-        BM25_INDEX = BM25Okapi(tokenized_docs)
+            tokenized_docs = [
+                chunk.page_content.split()
+                for chunk in BM25_DOCUMENTS
+            ]
+
+            BM25_INDEX = BM25Okapi(tokenized_docs)
 
     except Exception:
 
@@ -82,7 +86,12 @@ def bm25_search(
 
     try:
 
-        if BM25_INDEX is None:
+        with BM25_LOCK:
+
+            index = BM25_INDEX
+            documents = BM25_DOCUMENTS
+
+        if index is None:
 
             logger.warning(
                 "BM25 Index Not Initialized."
@@ -92,14 +101,14 @@ def bm25_search(
 
         tokenized_query = query.split()
 
-        scores = BM25_INDEX.get_scores(
+        scores = index.get_scores(
             tokenized_query
         )
 
         scored_docs = []
 
         for chunk, score in zip(
-            BM25_DOCUMENTS,
+            documents,
             scores,
         ):
 
@@ -268,33 +277,35 @@ def remove_document_chunks(
 
     try:
 
-        BM25_DOCUMENTS = [
+        with BM25_LOCK:
 
-            chunk
+            BM25_DOCUMENTS = [
 
-            for chunk in BM25_DOCUMENTS
-
-            if chunk.metadata.get("document_id") != document_id
-
-        ]
-
-        if BM25_DOCUMENTS:
-
-            tokenized_docs = [
-
-                chunk.page_content.split()
+                chunk
 
                 for chunk in BM25_DOCUMENTS
 
+                if chunk.metadata.get("document_id") != document_id
+
             ]
 
-            BM25_INDEX = BM25Okapi(
-                tokenized_docs
-            )
+            if BM25_DOCUMENTS:
 
-        else:
+                tokenized_docs = [
 
-            BM25_INDEX = None
+                    chunk.page_content.split()
+
+                    for chunk in BM25_DOCUMENTS
+
+                ]
+
+                BM25_INDEX = BM25Okapi(
+                    tokenized_docs
+                )
+
+            else:
+
+                BM25_INDEX = None
 
     except Exception:
 

@@ -6,8 +6,7 @@ from src.services.memory_service import (
     save_message,
 )
 from src.utils.logger import logger
-from src.agents.planner import planner
-from src.agents.retrieval import retrieval_node
+
 
 
 class Agent:
@@ -105,6 +104,8 @@ class Agent:
 
         }
 
+
+
     @staticmethod
     async def execute_stream(
         question: str,
@@ -158,20 +159,10 @@ class Agent:
         }
 
         # ---------------------------------------------------------
-        # Planner
+        # Execute Graph (ASYNC)
         # ---------------------------------------------------------
 
-        planner_result = await planner(state)
-
-        state.update(planner_result)
-
-        # ---------------------------------------------------------
-        # Retrieval
-        # ---------------------------------------------------------
-
-        retrieval_result = await retrieval_node(state)
-
-        state.update(retrieval_result)
+        result = await graph.ainvoke(state)
 
         # ---------------------------------------------------------
         # Save User Message

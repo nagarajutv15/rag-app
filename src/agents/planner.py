@@ -21,11 +21,6 @@ async def planner(state: AgentState):
         query,
     )
 
-    query = (
-        state.get("rewritten_question")
-        or state["question"]
-    )
-
     response = await asyncio.wait_for(
         llm.ainvoke(
             [

@@ -36,7 +36,7 @@ BM25_WEIGHT = 0.40
 
 MIN_VECTOR_SCORE = 0.0
 
-MIN_RERANK_SCORE = -3.0
+MIN_RERANK_SCORE = -2.5
 
 DEFAULT_TOP_K = 10
 
@@ -214,15 +214,13 @@ def hybrid_search(
         # CrossEncoder
         # ---------------------------------------------------------
 
-        #reranked_documents = merged_results[:top_k]
-
         start = time.perf_counter()
 
         reranked_documents = asyncio.run(
             rerank(
                 query=query,
                 documents=merged_results,
-                top_k=top_k,
+                top_k=DEFAULT_RERANK_TOP_K,
             )
         )
 
@@ -356,14 +354,17 @@ async def rerank(
 
         best_score = documents[0]["rerank_score"]
 
-        dynamic_threshold = best_score - 2.0
-
-        if best_score < -0.5:
+        if best_score < MIN_RERANK_SCORE:
             logger.info(
                 "CrossEncoder rejected all documents | Best Score=%.3f",
                 best_score,
             )
             return []
+
+        dynamic_threshold = max(
+            best_score - 2.0,
+            MIN_RERANK_SCORE,
+        )
 
         reranked_documents = [
 

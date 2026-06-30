@@ -113,6 +113,8 @@ def process_document_upload(
 
         version = 1
 
+        existing_document_id = None
+
         if existing_document:
 
             logger.info(
@@ -121,13 +123,7 @@ def process_document_upload(
                 existing_document.version,
             )
 
-            remove_document_chunks(
-                existing_document.document_id,
-            )
-
-            delete_document_vectors(
-                existing_document.document_id,
-            )
+            existing_document_id = existing_document.document_id
 
             existing_document.is_active = False
 
@@ -164,6 +160,48 @@ def process_document_upload(
         db.commit()
 
         db.refresh(document)
+
+        # ------------------------------------------------------------------
+        # Remove Old Version's BM25/Vector Data (only after commit succeeds,
+        # so a failed commit doesn't leave orphaned/deleted index state).
+        # If this fails (e.g. Qdrant temporarily unavailable), the upload
+        # still succeeds for the new version, but old chunks/vectors may
+        # remain in the index — flagged via stale_cleanup_failed below so
+        # it isn't silently lost.
+        # ------------------------------------------------------------------
+
+        stale_cleanup_failed = False
+
+        if existing_document_id is not None:
+
+            try:
+
+                remove_document_chunks(
+                    existing_document_id,
+                )
+
+                delete_document_vectors(
+                    existing_document_id,
+                )
+
+            except Exception:
+
+                stale_cleanup_failed = True
+
+                logger.exception(
+                    "Failed Cleaning Old Document Version | Document=%s | "
+                    "Old chunks/vectors may still be searchable.",
+                    existing_document_id,
+                )
+
+                
+        if stale_cleanup_failed:
+
+            logger.warning(
+                "Upload completed but old version cleanup failed | "
+                "Old document=%s",
+                existing_document_id,
+            )
 
         logger.info(
             "Metadata Saved | Document=%s | Version=%d",
@@ -260,6 +298,8 @@ def process_document_upload(
             "file_name": document.file_name,
 
             "version": document.version,
+
+            "stale_version_cleanup_failed": stale_cleanup_failed,
 
         }
 
