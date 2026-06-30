@@ -358,6 +358,13 @@ async def rerank(
 
         dynamic_threshold = best_score - 2.0
 
+        if best_score < -0.5:
+            logger.info(
+                "CrossEncoder rejected all documents | Best Score=%.3f",
+                best_score,
+            )
+            return []
+
         reranked_documents = [
 
             doc
