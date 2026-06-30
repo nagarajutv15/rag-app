@@ -58,34 +58,28 @@ async def generator(state):
                 "",
             ).strip()
 
-        logger.info("=" * 80)
+        logger.info("Question=%s", query)
         logger.info(
-            "QUESTION:\n%s",
-            query,
+            "Memory Context Length=%d",
+            len(state.get("memory_context", "")),
         )
 
         logger.info("=" * 80)
         logger.info(
-            "MEMORY CONTEXT:\n%s",
-            state.get("memory_context", ""),
+            "RAG Context Length=%d chars",
+            len(state.get("rag_context", "")),
         )
 
         logger.info("=" * 80)
         logger.info(
-            "RAG CONTEXT:\n%s",
-            state.get("rag_context", ""),
+            "Web Context Length=%d",
+            len(state.get("web_context", "")),
         )
 
         logger.info("=" * 80)
         logger.info(
-            "WEB CONTEXT:\n%s",
-            state.get("web_context", ""),
-        )
-
-        logger.info("=" * 80)
-        logger.info(
-            "ANSWER:\n%s",
-            answer,
+            "Answer Generated | Characters=%d",
+            len(response.content),
         )
 
         logger.info(

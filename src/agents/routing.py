@@ -12,10 +12,24 @@ def should_generate(state):
     """
     Decide whether to generate an answer or rewrite the query.
 
-    Returns:
-        - "generate"
-        - "rewrite"
+    Only RAG retrieval failures should trigger query rewriting.
     """
+
+    # ------------------------------------------------------------------
+    # No RAG selected
+    # ------------------------------------------------------------------
+
+    if "rag" not in state["tools"]:
+
+        logger.info(
+            "Routing -> Generator | No RAG retrieval required."
+        )
+
+        return "generate"
+
+    # ------------------------------------------------------------------
+    # RAG succeeded
+    # ------------------------------------------------------------------
 
     if state["retrieval_success"]:
 
@@ -27,20 +41,28 @@ def should_generate(state):
 
         return "generate"
 
+    # ------------------------------------------------------------------
+    # Retry exhausted
+    # ------------------------------------------------------------------
+
     if state["retry_count"] >= MAX_RETRIES:
 
         logger.info(
-            "Routing -> Generator | Max retries reached with no retrieval."
+            "Routing -> Generator | Max retries reached with no relevant RAG documents."
         )
 
         return "generate"
 
+    # ------------------------------------------------------------------
+    # Rewrite
+    # ------------------------------------------------------------------
+
     logger.info(
-        "Routing -> Rewriter | No relevant documents retrieved."
+        "Routing -> Rewriter | No relevant RAG documents retrieved."
     )
 
     state["retry_reason"] = (
-        "No relevant documents were retrieved."
+        "No relevant internal documents were retrieved."
     )
 
     return "rewrite"
