@@ -7,6 +7,7 @@ from src.models.database import get_db
 from src.models.chat_request import ChatRequest
 from src.models.chat_response import ChatResponse
 from src.agents.agent import Agent
+from src.services.memory_service import get_chat_history
 from src.utils.logger import logger
 
 
@@ -125,3 +126,27 @@ async def chat_stream(
             "Connection": "keep-alive",
         },
     )
+
+
+@router.get("/history/{session_id}")
+def chat_history(
+    session_id: str,
+    db: Session = Depends(get_db),
+):
+
+    try:
+
+        return get_chat_history(
+            db=db,
+            session_id=session_id,
+            limit=100,
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Chat History Request Failed | Session=%s",
+            session_id,
+        )
+
+        raise
