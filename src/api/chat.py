@@ -7,7 +7,7 @@ from src.models.database import get_db
 from src.models.chat_request import ChatRequest
 from src.models.chat_response import ChatResponse
 from src.agents.agent import Agent
-from src.services.memory_service import get_chat_history
+from src.services.memory_service import get_chat_history, delete_chat_history
 from src.utils.logger import logger
 
 
@@ -146,6 +146,31 @@ def chat_history(
 
         logger.exception(
             "Chat History Request Failed | Session=%s",
+            session_id,
+        )
+
+        raise
+
+
+@router.delete("/history/{session_id}")
+def delete_history(
+    session_id: str,
+    db: Session = Depends(get_db),
+):
+
+    try:
+
+        deleted = delete_chat_history(
+            db=db,
+            session_id=session_id,
+        )
+
+        return {"deleted": deleted, "session_id": session_id}
+
+    except Exception:
+
+        logger.exception(
+            "Delete History Failed | Session=%s",
             session_id,
         )
 
