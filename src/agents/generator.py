@@ -44,22 +44,13 @@ async def generator(state):
     try:
 
         response = await asyncio.wait_for(
-
-            llm.ainvoke(
-                [
-                    ("system", prompt),
-                ]
-            ),
-
+            llm.ainvoke([("system", prompt),]),
             timeout=GENERATION_TIMEOUT,
-
         )
 
         answer = response.content.strip()
 
-        needs_more_context = (
-            "NEED_MORE_CONTEXT" in answer
-        )
+        needs_more_context = ("NEED_MORE_CONTEXT" in answer)
 
         if needs_more_context:
 
@@ -98,30 +89,19 @@ async def generator(state):
         )
 
         return {
-
             "answer": answer,
-
             "needs_more_context": needs_more_context,
-
             "retry_reason": (
-
                 "Generator requested additional context."
-
                 if needs_more_context
-
                 else ""
-
             ),
-
             "observability": {
-
                 **state.get(
                     "observability",
                     {},
                 ),
-
                 "generator": {
-
                     "latency_ms": round(
                         (
                             time.perf_counter()
@@ -130,45 +110,29 @@ async def generator(state):
                         * 1000,
                         2,
                     ),
-
                     "needs_more_context": needs_more_context,
-
                 },
-
             },
-
         }
 
     except asyncio.TimeoutError:
 
-        logger.exception(
-            "Generator Timed Out"
-        )
+        logger.exception("Generator Timed Out")
 
         return {
-
             "answer": "The request timed out while generating the response.",
-
             "needs_more_context": False,
-
             "retry_reason": "Generation timeout.",
-
         }
 
     except Exception:
 
-        logger.exception(
-            "Generator Failed"
-        )
+        logger.exception("Generator Failed")
 
         return {
-
             "answer": "An unexpected error occurred while generating the response.",
-
             "needs_more_context": False,
-
             "retry_reason": "Generator exception.",
-
         }
 
     finally:
@@ -177,7 +141,4 @@ async def generator(state):
             time.perf_counter() - start
         ) * 1000
 
-        logger.info(
-            "Generator Finished | Time=%.2f ms",
-            latency,
-        )
+        logger.info( "Generator Finished | Time=%.2f ms",latency,)

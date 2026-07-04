@@ -88,9 +88,18 @@ async def chat_stream(
 
         try:
 
+            # Resolve session_id before streaming so client knows it
+            from src.services.memory_service import create_session as _create
+            sid = request.session_id
+            if not sid:
+                sid = _create(db).session_id
+
+            # Emit session id as first event so client can persist it
+            yield f"event: session\ndata: {sid}\n\n"
+
             async for token in Agent.execute_stream(
                 question=request.question,
-                session_id=request.session_id,
+                session_id=sid,
                 db=db,
             ):
                 yield f"data: {token}\n\n"

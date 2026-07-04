@@ -4,7 +4,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import List
-
+from functools import lru_cache
 from dotenv import load_dotenv
 from fastapi import HTTPException, UploadFile
 from langchain_community.document_loaders import (
@@ -15,7 +15,6 @@ from langchain_community.document_loaders import (
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
 from src.utils.logger import logger
 
 

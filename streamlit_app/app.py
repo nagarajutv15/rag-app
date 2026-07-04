@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import sseclient
 
 API_BASE = "http://localhost:8000"
 
@@ -133,31 +134,53 @@ def delete_session(sid):
         new_chat()
     st.session_state.open_menu = None
 
-def send_message(question):
+def _register_session(sid, question):
+    """Persist new session_id and label into state."""
+    if st.session_state.session_id is None:
+        st.session_state.session_id = sid
+        st.session_state.chat_counter += 1
+        words = question.strip().split()
+        label = " ".join(words[:4]) + ("..." if len(words) > 4 else "")
+        st.session_state.sessions.append({"id": sid, "label": label})
+
+# ── Streaming send (uses /chat/stream SSE) ─────────────────────────
+def send_message_stream(question, container):
+    full_answer = ""
     try:
-        r = requests.post(
-            f"{API_BASE}/chat",
+        with requests.post(
+            f"{API_BASE}/chat/stream",
             json={"question": question, "session_id": st.session_state.session_id},
+            stream=True,
             timeout=120,
-        )
-        r.raise_for_status()
-        data = r.json()
-        sid  = data["session_id"]
-        if st.session_state.session_id is None:
-            st.session_state.session_id = sid
-            st.session_state.chat_counter += 1
-            # use first ~4 words of question as label
-            words = question.strip().split()
-            label = " ".join(words[:4]) + ("..." if len(words) > 4 else "")
-            st.session_state.sessions.append({
-                "id":    sid,
-                "label": label,
-            })
-        return data["answer"]
+        ) as resp:
+            resp.raise_for_status()
+            client      = sseclient.SSEClient(resp)
+            placeholder = container.empty()
+
+            for event in client.events():
+                if not event.data:
+                    continue
+                if event.data == "[DONE]":
+                    break
+                if event.event == "session":
+                    _register_session(event.data.strip(), question)
+                    continue
+                if event.data == "ERROR":
+                    full_answer = "⚠️ Server error. Please try again."
+                    break
+                full_answer += event.data
+                placeholder.markdown(full_answer + "▌")
+
+            placeholder.markdown(full_answer)
+
     except requests.exceptions.Timeout:
-        return "⚠️ Request timed out. Please try again."
+        full_answer = "⚠️ Request timed out. Please try again."
+        container.markdown(full_answer)
     except Exception as e:
-        return f"⚠️ Error: {e}"
+        full_answer = f"⚠️ Error: {e}"
+        container.markdown(full_answer)
+
+    return full_answer
 
 # ── Sidebar ────────────────────────────────────────────────────────
 with st.sidebar:
@@ -185,9 +208,9 @@ with st.sidebar:
 
     # ── Session list ──
     for s in reversed(st.session_state.sessions):
-        sid      = s["id"]
-        label    = s["label"]
-        is_open  = st.session_state.open_menu == sid
+        sid       = s["id"]
+        label     = s["label"]
+        is_open   = st.session_state.open_menu == sid
         is_active = st.session_state.session_id == sid
 
         col_label, col_dots = st.columns([6, 1])
@@ -253,8 +276,6 @@ if prompt := st.chat_input("Ask anything..."):
     with st.chat_message("user"):
         st.markdown(prompt)
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            answer = send_message(prompt)
-        st.markdown(answer)
+        answer = send_message_stream(prompt, st.container())
     st.session_state.messages.append({"role": "assistant", "content": answer})
     st.rerun()
