@@ -69,3 +69,38 @@ builder.add_edge(
 graph = builder.compile()
 
 logger.info("LangGraph compiled successfully.")
+
+
+
+
+
+# ---------------------------------------------------------------------
+# Streaming Graph
+# ---------------------------------------------------------------------
+
+stream_builder = StateGraph(AgentState)
+
+stream_builder.add_node("planner", planner)
+stream_builder.add_node("retrieval", retrieval_node)
+stream_builder.add_node("rewriter", rewriter)
+
+stream_builder.add_edge(START, "planner")
+stream_builder.add_edge("planner", "retrieval")
+
+stream_builder.add_conditional_edges(
+    "retrieval",
+    should_generate,
+    {
+        "generate": END,          # Stop before generator
+        "rewrite": "rewriter",
+    },
+)
+
+stream_builder.add_edge(
+    "rewriter",
+    "planner",
+)
+
+stream_graph = stream_builder.compile()
+
+logger.info("Streaming LangGraph compiled successfully.")

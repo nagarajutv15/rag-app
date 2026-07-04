@@ -129,7 +129,11 @@ async def retrieval_node(state):
                 "context",
                 "",
             )
-
+            logger.info(
+                "%s Context Length = %d",
+                tool_name.upper(),
+                len(result[f"{tool_name}_context"])
+            )
             result[f"{tool_name}_sources"] = tool_result.get(
                 "sources",
                 [],
@@ -187,10 +191,6 @@ async def retrieval_node(state):
 
                 "retrieval": {
 
-                    "memory": bool(
-                        result.get("memory_context")
-                    ),
-
                     "rag": bool(
                         result.get("rag_context")
                     ),
@@ -238,8 +238,6 @@ async def retrieval_node(state):
         )
 
         return {
-
-            "memory_context": "",
 
             "rag_context": "",
 

@@ -13,9 +13,7 @@ async def generator_stream(state):
 
     start = time.perf_counter()
 
-    logger.info(
-        "Streaming Generator Started"
-    )
+    logger.info("Streaming Generator Started")
 
     query = (
         state.get("rewritten_question")
@@ -34,57 +32,31 @@ async def generator_stream(state):
     answer = ""
 
     try:
+        stream = llm.astream([("system", prompt),])
 
-        stream = llm.astream(
-            [
-                ("system", prompt),
-            ]
-        )
-
-        async for chunk in asyncio.wait_for(
-            stream.__aiter__(),
-            timeout=GENERATION_TIMEOUT,
-        ):
-
+        async for chunk in stream:
             if not chunk.content:
                 continue
 
-            logger.debug(
-                "Generated Chunk | Length=%d",
-                len(chunk.content),
-            )
-
             answer += chunk.content
-
             yield chunk.content
 
     except asyncio.TimeoutError:
 
-        logger.exception(
-            "Streaming Generator Timed Out"
-        )
-
+        logger.exception("Streaming Generator Timed Out")
         yield "\n\nThe response generation timed out."
 
     except Exception:
 
-        logger.exception(
-            "Streaming Generator Failed"
-        )
-
+        logger.exception("Streaming Generator Failed")
         yield "\n\nAn unexpected error occurred while generating the response."
 
     finally:
 
-        needs_more_context = (
-            "NEED_MORE_CONTEXT" in answer
-        )
+        needs_more_context = ("NEED_MORE_CONTEXT" in answer)
 
         if needs_more_context:
-
-            logger.info(
-                "Generator requested more context."
-            )
+            logger.info("Generator requested more context.")
 
         state["answer"] = answer.replace(
             "NEED_MORE_CONTEXT",

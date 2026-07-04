@@ -22,6 +22,8 @@ class AgentState(TypedDict):
     # Retrieved Context
     # ------------------------------------------------------------------
 
+    # memory_context is set once by Agent (summary + last 3 messages)
+    # before the graph runs. It is NOT a plannable/retrieval tool.
     memory_context: str
     rag_context: str
     web_context: str

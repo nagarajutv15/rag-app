@@ -22,9 +22,28 @@ from src.vectorstore.qdrant_connection import (
 # CrossEncoder
 # ----------------------------------------------------------------------------------------------------------
 
-reranker = CrossEncoder(
-    "cross-encoder/ms-marco-MiniLM-L-6-v2"
-)
+reranker = None
+
+
+def get_reranker():
+    global reranker
+
+    if reranker is not None:
+        return reranker
+
+    try:
+        reranker = CrossEncoder(
+            "cross-encoder/ms-marco-MiniLM-L-6-v2"
+        )
+    except Exception:
+        logger.warning(
+            "CrossEncoder model unavailable; continuing without reranking.",
+            exc_info=True,
+        )
+        reranker = False
+
+    return reranker
+
 
 # ----------------------------------------------------------------------------------------------------------
 # Retrieval Configuration
@@ -216,18 +235,34 @@ def hybrid_search(
 
         start = time.perf_counter()
 
-        reranked_documents = asyncio.run(
-            rerank(
-                query=query,
-                documents=merged_results,
-                top_k=DEFAULT_RERANK_TOP_K,
-            )
-        )
+        # reranked_documents = asyncio.run(
+        #     rerank(
+        #         query=query,
+        #         documents=merged_results,
+        #         top_k=DEFAULT_RERANK_TOP_K,
+        #     )
+        # )
+        reranked_documents = merged_results[:DEFAULT_RERANK_TOP_K]
 
         logger.info(
             "CrossEncoder Time=%.2f ms",
             (time.perf_counter() - start) * 1000,
         )
+
+        logger.info("=" * 80)
+        logger.info("Retrieved Documents")
+
+        for i, doc in enumerate(reranked_documents):
+            logger.info(
+                "\nDOC %d\nHybrid=%.3f  Vector=%.3f  BM25=%.3f\n%s\n",
+                i + 1,
+                doc.get("hybrid_score", 0.0),
+                doc.get("vector_score", 0.0),
+                doc.get("bm25_score", 0.0),
+                doc.get("text", "")[:600],
+            )
+
+        logger.info("=" * 80)
         best_score = max(
             (doc.get("rerank_score", 0.0) for doc in reranked_documents),
             default=0.0,
@@ -310,6 +345,14 @@ async def rerank(
             len(documents),
         )
 
+        reranker_model = get_reranker()
+
+        if not reranker_model:
+            logger.info(
+                "CrossEncoder unavailable; returning documents without reranking."
+            )
+            return documents[:top_k]
+
         pairs = [
 
             (
@@ -322,7 +365,7 @@ async def rerank(
         ]
 
         scores = await asyncio.to_thread(
-            reranker.predict,
+            reranker_model.predict,
             pairs,
         )
 

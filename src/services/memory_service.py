@@ -98,19 +98,12 @@ async def save_message(
 
         db.refresh(message)
 
-        try:
-
-            await maybe_update_summary(
-                db=db,
-                session_id=session_id,
-            )
-
-        except Exception:
-
-            logger.exception(
-                "Conversation Summary Update Failed (Non-Fatal) | Session=%s",
-                session_id,
-            )
+        # NOTE: Conversation summary update used to be triggered here with
+        # `await maybe_update_summary(...)`. That blocked the response
+        # with an extra LLM call on every 10th message. It has been moved
+        # to `schedule_conversation_summary()` (bottom of this file),
+        # which the Agent fires as a background task AFTER the response
+        # is already on its way back to the user.
 
         latency = (
             time.perf_counter() - start
@@ -145,7 +138,7 @@ async def save_message(
 def get_chat_history(
     db,
     session_id: str,
-    limit: int = 5,
+    limit: int = 3,
 ):
 
     start = time.perf_counter()
@@ -212,6 +205,116 @@ def get_chat_history(
         )
 
         raise
+
+
+# ----------------------------------------------------------------------------------------------------------#
+# Get lightweight memory context (Summary + Last N messages)
+# ----------------------------------------------------------------------------------------------------------#
+#
+# This replaces the old "memory" tool. Instead of letting the planner LLM
+# decide whether to fetch conversation history (which cost extra planner
+# tokens + a full retrieval-tool round trip), we ALWAYS build a small,
+# fixed-size memory context up front:
+#
+#     Conversation Summary (~150-250 tokens)   -> rolling summary, refreshed
+#                                                  every 10 messages
+#   + Last 3 exchanges     (~100-300 tokens)   -> raw recent turns
+#   --------------------------------------------
+#     Total                 ~2k tokens (worst case), typically much less
+#
+# instead of dumping the entire conversation (5000+ tokens) into every LLM
+# call. As a hard safety net (long messages, oversized summary, etc.) the
+# final context string is also capped at MAX_MEMORY_CONTEXT_CHARS.
+# ----------------------------------------------------------------------------------------------------------#
+
+MAX_MEMORY_CONTEXT_CHARS = 2500
+
+
+def get_memory_context(
+    db,
+    session_id: str,
+    limit: int = 3,
+) -> str:
+
+    if not session_id:
+        return ""
+
+    start = time.perf_counter()
+
+    try:
+
+        history = get_chat_history(
+            db=db,
+            session_id=session_id,
+            limit=limit,
+        )
+
+        summary = history["summary"]
+
+        messages = history["messages"]
+
+        if not summary and not messages:
+            return ""
+
+        recent_conversation = "\n".join(
+            f"{message['role']}: {message['content']}"
+            for message in messages
+        )
+
+        if summary:
+
+            context = f"""
+Conversation Summary
+--------------------------------------------------
+
+{summary}
+
+--------------------------------------------------
+Recent Conversation
+--------------------------------------------------
+
+{recent_conversation}
+"""
+
+        else:
+
+            context = f"""
+Recent Conversation
+--------------------------------------------------
+
+{recent_conversation}
+"""
+
+        latency = (
+            time.perf_counter() - start
+        ) * 1000
+
+        truncated = len(context) > MAX_MEMORY_CONTEXT_CHARS
+
+        if truncated:
+
+            context = context[:MAX_MEMORY_CONTEXT_CHARS] + "\n...[truncated]"
+
+        logger.info(
+            "Memory Context Built | Session=%s | Messages=%d | HasSummary=%s | Chars=%d | Truncated=%s | Time=%.2f ms",
+            session_id,
+            len(messages),
+            bool(summary),
+            len(context),
+            truncated,
+            latency,
+        )
+
+        return context
+
+    except Exception:
+
+        logger.exception(
+            "Failed to build memory context | Session=%s",
+            session_id,
+        )
+
+        return ""
 
 
 # ----------------------------------------------------------------------------------------------------------#
@@ -414,3 +517,45 @@ async def maybe_update_summary(
         )
 
         raise
+
+
+# ----------------------------------------------------------------------------------------------------------#
+# Schedule conversation summary update as a background task
+# ----------------------------------------------------------------------------------------------------------#
+#
+# Summarization is an LLM call. Awaiting it inline (the old behavior)
+# added extra latency to every 10th response before it reached the user.
+# This helper is meant to be fired with asyncio.create_task(...) AFTER
+# the response has already been returned/streamed, so it never blocks
+# the user-facing request.
+#
+# It opens/closes its OWN DB session because the request-scoped session
+# (from FastAPI's Depends(get_db)) is closed as soon as the request
+# finishes, i.e. before this task gets a chance to run.
+# ----------------------------------------------------------------------------------------------------------#
+
+async def schedule_conversation_summary(
+    session_id: str,
+):
+
+    from src.models.database import SessionLocal
+
+    db = SessionLocal()
+
+    try:
+
+        await maybe_update_summary(
+            db=db,
+            session_id=session_id,
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Background Conversation Summary Failed (Non-Fatal) | Session=%s",
+            session_id,
+        )
+
+    finally:
+
+        db.close()
