@@ -1,7 +1,7 @@
 import asyncio
 import inspect
 import time
-
+from langsmith import traceable
 from src.tools.registry import TOOL_REGISTRY
 from src.utils.logger import logger
 
@@ -10,6 +10,7 @@ from src.utils.logger import logger
 # Retrieval Node
 # ----------------------------------------------------------------------------------------------------------
 
+@traceable(name="Retrieval")
 async def retrieval_node(state):
 
     start = time.perf_counter()
