@@ -39,6 +39,12 @@ class RAGTool:
                 search_result["best_rerank_score"],
                 latency,
             )
+            context = "\n\n".join(doc["text"] for doc in documents)
+
+            logger.info(
+                "RAG Context Built | Length=%d",
+                len(context),
+            )
 
             return {
 

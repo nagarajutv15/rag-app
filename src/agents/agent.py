@@ -9,6 +9,8 @@ from src.services.memory_service import (
     schedule_conversation_summary,
 )
 from src.utils.logger import logger
+from langsmith import traceable
+
 
 MEMORY_RECENT_MESSAGES = 3
 
@@ -29,6 +31,7 @@ def _fire_and_forget(coro) -> None:
 class Agent:
 
     @staticmethod
+    @traceable(name="Chat Request")
     async def execute(
         question: str,
         session_id: str | None,
@@ -154,6 +157,7 @@ class Agent:
 
 
     @staticmethod
+    @traceable(name="Chat Request")
     async def execute_stream(
         question: str,
         session_id: str | None,

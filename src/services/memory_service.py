@@ -1,7 +1,7 @@
 import logging
 import time
 from datetime import datetime, timezone
-
+from langsmith import traceable
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.models.chat_session import ChatSession
@@ -533,7 +533,7 @@ async def maybe_update_summary(
 # (from FastAPI's Depends(get_db)) is closed as soon as the request
 # finishes, i.e. before this task gets a chance to run.
 # ----------------------------------------------------------------------------------------------------------#
-
+@traceable(name="Conversation Summary")
 async def schedule_conversation_summary(
     session_id: str,
 ):

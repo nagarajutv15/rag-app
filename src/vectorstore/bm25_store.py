@@ -1,6 +1,7 @@
 import time
 import threading
 
+from langsmith import traceable
 from rank_bm25 import BM25Okapi
 
 from src.models.document_schema import DocumentMetadata
@@ -68,7 +69,7 @@ def build_bm25_index(chunks):
 # ----------------------------------------------------------------------------------------------------------
 # BM25 Search
 # ----------------------------------------------------------------------------------------------------------
-
+@traceable(name="BM25 Search")
 def bm25_search(
     query: str,
     top_k: int = 10,

@@ -2,6 +2,7 @@ import asyncio
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+from langsmith import traceable
 from sentence_transformers import CrossEncoder
 from qdrant_client.models import (
     Filter,
@@ -82,7 +83,7 @@ def normalize_bm25_score(score: float, max_score: float) -> float:
 # ----------------------------------------------------------------------------------------------------------
 # Hybrid Search
 # ----------------------------------------------------------------------------------------------------------
-
+@traceable(name="Hybrid Search")
 def hybrid_search(
     query: str,
     top_k: int = DEFAULT_TOP_K,
@@ -442,7 +443,7 @@ async def rerank(
 # ----------------------------------------------------------------------------------------------------------
 # Vector Search
 # ----------------------------------------------------------------------------------------------------------
-
+@traceable(name="Vector Search")
 def retrieve_documents(
     query: str,
     top_k: int = DEFAULT_TOP_K,

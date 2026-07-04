@@ -1,13 +1,14 @@
 import json
 import time
 import asyncio
-
+from langsmith import traceable
 from src.llm.llm_service import planner_llm
 from src.agents.prompts import PLANNER_PROMPT
 from src.agents.state import AgentState
 from src.utils.logger import logger
 
 
+@traceable(name="Planner")
 async def planner(state: AgentState):
 
     start = time.perf_counter()
