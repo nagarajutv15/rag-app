@@ -1,6 +1,6 @@
 import asyncio
 import time
-
+from langsmith import traceable
 from src.agents.prompts import GENERATOR_PROMPT
 from src.llm.llm_service import llm
 from src.utils.logger import logger
@@ -8,7 +8,7 @@ from src.utils.logger import logger
 
 GENERATION_TIMEOUT = 60
 
-
+@traceable(name="Generator")
 async def generator_stream(state):
 
     start = time.perf_counter()
