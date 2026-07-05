@@ -40,5 +40,6 @@ dist/
 # Database
 *.db
 
+
 # SQLite temp files
 *.db-journal
