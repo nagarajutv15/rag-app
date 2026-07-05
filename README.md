@@ -272,6 +272,10 @@ QDRANT_API_KEY=your_qdrant_api_key
 QDRANT_COLLECTION=documents
 TAVILY_API_KEY=your_tavily_api_key
 DATABASE_URL=sqlite:///./ragapp.db
+LANGCHAIN_API_KEY=your_langsmith_api_key
+LANGCHAIN_PROJECT=Adaptive-RAG
+LANGCHAIN_TRACING=1
+LANGCHAIN_TRACING_V2=1
 ```
 
 ### 4. Run the Application
@@ -284,6 +288,23 @@ In another terminal:
 
 ```bash
 streamlit run streamlit_app/app.py
+```
+
+### 4.1 Enable Langsmith Tracing
+
+If you want request tracing in Langsmith, set these environment variables before startup:
+
+```bash
+set LANGCHAIN_API_KEY=your_langsmith_api_key
+set LANGCHAIN_PROJECT=Adaptive-RAG
+set LANGCHAIN_TRACING=1
+set LANGCHAIN_TRACING_V2=1
+```
+
+Then start the app normally:
+
+```bash
+uvicorn src.main:app --reload
 ```
 
 Access:

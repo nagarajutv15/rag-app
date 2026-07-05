@@ -31,3 +31,4 @@ dependencies = [
     "unstructured==0.18.14",
     "uvicorn[standard]==0.35.0",
 ]
+
