@@ -3,7 +3,10 @@ version: "3.9"
 services:
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+
     container_name: rag-api
 
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000
@@ -24,8 +27,12 @@ services:
 
     restart: unless-stopped
 
+
   streamlit:
-    build: .
+    build:
+      context: .
+      dockerfile: streamlit_app/Dockerfile
+
     container_name: rag-streamlit
 
     command: streamlit run streamlit_app/app.py --server.port=8501 --server.address=0.0.0.0
@@ -45,8 +52,10 @@ services:
 
     restart: unless-stopped
 
+
   postgres:
     image: postgres:16-alpine
+
     container_name: rag-postgres
 
     environment:
@@ -62,8 +71,10 @@ services:
 
     restart: unless-stopped
 
+
   qdrant:
     image: qdrant/qdrant:latest
+
     container_name: qdrant
 
     ports:
@@ -73,6 +84,7 @@ services:
       - qdrant_data:/qdrant/storage
 
     restart: unless-stopped
+
 
 volumes:
   postgres_data:
