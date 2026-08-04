@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: rag-streamlit
+  namespace: rag-app
+
+spec:
+  replicas: 2
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+
+  selector:
+    matchLabels:
+      app: rag-streamlit
+
+  template:
+    metadata:
+      labels:
+        app: rag-streamlit
+
+    spec:
+      containers:
+        - name: rag-streamlit
+
+          image: nagarajutv/rag-streamlit:latest
+
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8501
+
+          envFrom:
+            - configMapRef:
+                name: rag-config
+
+            - secretRef:
+                name: rag-secret
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

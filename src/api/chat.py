@@ -184,3 +184,12 @@ def delete_history(
         )
 
         raise
+
+
+
+@router.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "service": "rag-api"
+    }
