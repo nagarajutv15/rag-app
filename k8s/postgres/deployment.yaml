@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-king: Deployment
+kind: Deployment
 
 metadata:
   name: postgres
@@ -11,7 +11,7 @@ spec:
   selector:
     matchLabels:
       app: postgres
-    
+
   template:
     metadata:
       labels:
@@ -27,13 +27,22 @@ spec:
 
           env:
             - name: POSTGRES_DB
-              value: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: rag-config
+                  key: POSTGRES_DB
 
             - name: POSTGRES_USER
-              value: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secret
+                  key: POSTGRES_USER
 
             - name: POSTGRES_PASSWORD
-              value: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secret
+                  key: POSTGRES_PASSWORD
 
           volumeMounts:
             - name: postgres-storage
