@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: rag-ingress
+  namespace: rag-app
+
+spec:
+  ingressClassName: nginx
+
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+
+            backend:
+              service:
+                name: rag-streamlit
+                port:
+                  number: 8501
